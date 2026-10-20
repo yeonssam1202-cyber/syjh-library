@@ -7,13 +7,6 @@
   hide.textContent = "html{visibility:hidden!important}";
   document.head.appendChild(hide);
 
-  // 폰에서는 상단바가 화면을 가리지 않도록 아래쪽에 가로로 펼쳐 둡니다.
-  var phone = document.createElement("style");
-  phone.textContent = "@media (max-width:820px){#app-bar{top:auto!important;bottom:10px!important;left:10px!important;right:10px!important;" +
-    "justify-content:space-between!important;border-radius:14px!important;padding:8px 10px!important;font-size:14px!important}" +
-    "#app-bar button,#app-bar a{padding:8px 10px!important}}";
-  document.head.appendChild(phone);
-
   function load(src) {
     return new Promise(function (ok, fail) {
       var s = document.createElement("script");
@@ -44,6 +37,12 @@
     btn.style.cssText = "border:0;background:#7d5411;color:#fff;border-radius:999px;padding:7px 12px;font:inherit;cursor:pointer";
     btn.onclick = async function () { await Auth.client.auth.signOut(); location.replace(loginUrl); };
     bar.appendChild(who); bar.appendChild(btn);
+    // 폰 배치 규칙을 바 안에 함께 넣어, 화면이 통째로 교체돼도 같이 유지되게 합니다.
+    var st = document.createElement("style");
+    st.textContent = "@media (max-width:820px){#app-bar{top:auto!important;bottom:10px!important;left:10px!important;right:10px!important;" +
+      "justify-content:space-between!important;border-radius:14px!important;padding:8px 10px!important;font-size:14px!important}" +
+      "#app-bar button,#app-bar a{padding:8px 10px!important}body{padding-bottom:64px!important}}";
+    bar.appendChild(st);
     document.body.appendChild(bar);
   }
 
@@ -56,8 +55,10 @@
       if (!p || p.status !== "approved") { location.replace(loginUrl); return; }
       hide.remove();
       resolveAuthed(p);
-      if (document.body) addLogoutBar(p);
-      else document.addEventListener("DOMContentLoaded", function () { addLogoutBar(p); });
+      // 시안 화면 스크립트가 로딩 중 본문을 교체하면 바가 사라지므로, 없으면 다시 붙입니다.
+      setInterval(function () {
+        if (document.body && !document.getElementById("app-bar")) addLogoutBar(p);
+      }, 500);
     } catch (e) {
       location.replace(loginUrl);
     }

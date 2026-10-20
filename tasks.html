@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>업무 목록 · 작은도서관 운영위원회</title>
+<script src="guard.js"></script>
+<style>
+  :root { --bg:#f3f2f2; --text:#201f1d; --muted:#6c6b69; --accent:#b68235; --accent-700:#7d5411; --line:#dcdad7; --err:#a8321f; --card:#fff; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--text); font:15px/1.6 "IBM Plex Sans KR","Malgun Gothic",-apple-system,sans-serif; padding:64px 20px 60px; }
+  .wrap { max-width:960px; margin:0 auto; }
+  header { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  .mark { font-size:13px; letter-spacing:.06em; color:var(--accent-700); }
+  h1 { font-size:28px; font-weight:600; }
+  button { font:inherit; cursor:pointer; }
+  .primary { background:var(--accent-700); color:#fff; border:0; border-radius:4px; padding:10px 16px; font-weight:600; }
+  .ghost { background:#fff; border:1px solid var(--line); border-radius:4px; padding:9px 14px; }
+  .danger { color:var(--err); }
+  .filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .chip { border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 14px; font-size:14px; color:var(--muted); }
+  .chip[aria-pressed="true"] { background:var(--accent-700); border-color:var(--accent-700); color:#fff; }
+  .counts { color:var(--muted); font-size:14px; margin:0 0 10px; }
+  .list { display:flex; flex-direction:column; gap:10px; }
+  .task { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px 18px; display:grid; grid-template-columns:1fr auto; gap:6px 16px; }
+  .task.done .title { text-decoration:line-through; color:var(--muted); }
+  .title { font-weight:600; font-size:16px; word-break:break-word; }
+  .desc { color:var(--muted); font-size:14px; white-space:pre-wrap; word-break:break-word; grid-column:1 / -1; }
+  .meta { display:flex; gap:8px; flex-wrap:wrap; align-items:center; grid-column:1 / -1; font-size:13px; }
+  .who { background:#f6efe2; color:var(--accent-700); border-radius:999px; padding:2px 10px; }
+  .who.me { background:var(--accent-700); color:#fff; }
+  .due { color:var(--muted); }
+  .due.late { color:var(--err); font-weight:600; }
+  .by { color:var(--muted); }
+  select { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:4px; background:#fff; }
+  .actions { display:flex; gap:6px; align-items:flex-start; }
+  .empty { text-align:center; color:var(--muted); padding:40px 0; background:#fff; border:1px dashed var(--line); border-radius:8px; }
+  .notice { background:#fbeae6; color:var(--err); padding:10px 14px; border-radius:6px; margin-bottom:14px; display:none; }
+  .notice.show { display:block; }
+  dialog { border:1px solid var(--line); border-radius:8px; padding:0; width:min(520px, calc(100vw - 32px)); color:var(--text); }
+  dialog::backdrop { background:rgba(0,0,0,.35); }
+  form.dlg { padding:24px; display:flex; flex-direction:column; gap:6px; }
+  form.dlg h2 { font-size:20px; margin-bottom:6px; }
+  label, .lab { font-size:14px; margin-top:8px; display:block; }
+  input[type=text], input[type=date], textarea { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:4px; font:inherit; background:#fff; }
+  textarea { min-height:90px; resize:vertical; }
+  input:focus, textarea:focus, select:focus { outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent); border-color:var(--accent); }
+  .row { display:flex; gap:12px; }
+  .row > div { flex:1; }
+  .people { display:flex; flex-wrap:wrap; gap:6px; max-height:150px; overflow:auto; padding:2px 0; }
+  .people label { margin:0; display:flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:999px; padding:5px 12px; cursor:pointer; background:#fff; }
+  .people label:has(input:checked) { background:#f6efe2; border-color:var(--accent); color:var(--accent-700); }
+  .people input { accent-color:var(--accent-700); }
+  .foot { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+  @media (max-width:560px) { .task { grid-template-columns:1fr; } .row { flex-direction:column; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="mark">작은도서관 운영위원회</div>
+      <h1>업무 목록</h1>
+    </div>
+    <button class="primary" id="btn-new">+ 새 업무</button>
+  </header>
+
+  <div id="notice" class="notice" role="alert"></div>
+
+  <div class="filters" id="filters">
+    <button class="chip" data-f="all" aria-pressed="true">전체</button>
+    <button class="chip" data-f="mine" aria-pressed="false">내 업무</button>
+    <button class="chip" data-f="todo" aria-pressed="false">할 일</button>
+    <button class="chip" data-f="doing" aria-pressed="false">진행 중</button>
+    <button class="chip" data-f="done" aria-pressed="false">완료</button>
+  </div>
+  <p class="counts" id="counts"></p>
+  <div class="list" id="list"></div>
+</div>
+
+<dialog id="dlg">
+  <form class="dlg" id="form" method="dialog">
+    <h2 id="dlg-title">새 업무</h2>
+    <label for="f-title">제목</label>
+    <input type="text" id="f-title" required maxlength="200">
+    <label for="f-desc">설명</label>
+    <textarea id="f-desc" maxlength="5000"></textarea>
+    <div class="row">
+      <div><label for="f-due">마감일</label><input type="date" id="f-due"></div>
+      <div><label for="f-status">상태</label>
+        <select id="f-status" style="width:100%">
+          <option value="todo">할 일</option><option value="doing">진행 중</option><option value="done">완료</option>
+        </select></div>
+    </div>
+    <span class="lab">담당자 (여러 명 선택 가능)</span>
+    <div class="people" id="people"></div>
+    <div class="foot">
+      <button type="button" class="ghost" id="btn-cancel">취소</button>
+      <button type="submit" class="primary" id="btn-save">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+window.whenAuthed.then(function (me) {
+  var db = Auth.client;
+  var STATUS = { todo: "할 일", doing: "진행 중", done: "완료" };
+  var $ = function (id) { return document.getElementById(id); };
+  var members = [], tasks = [], filter = "all", editing = null;
+  var nameOf = function (id) { var m = members.find(function (x) { return x.id === id; }); return m ? (m.name || m.email) : "알 수 없음"; };
+
+  function notice(text) { var n = $("notice"); n.textContent = text || ""; n.classList.toggle("show", !!text); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function today() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function canEdit(t) { return me.role === "admin" || t.created_by === me.id || t.task_assignees.some(function (a) { return a.user_id === me.id; }); }
+  function canDelete(t) { return me.role === "admin" || t.created_by === me.id; }
+
+  async function load() {
+    var m = await db.from("profiles").select("id,name,email").eq("status", "approved").order("name");
+    var t = await db.from("tasks").select("*, task_assignees(user_id)").order("created_at", { ascending: false });
+    if (m.error || t.error) {
+      var msg = (m.error || t.error).message;
+      notice(/relation .* does not exist|schema cache|Could not find/i.test(msg)
+        ? "업무 저장소가 아직 준비되지 않았어요. supabase-tasks.sql 을 Supabase에서 실행해 주세요."
+        : "불러오지 못했어요: " + msg);
+      return;
+    }
+    notice("");
+    members = m.data; tasks = t.data; render();
+  }
+
+  function visible() {
+    return tasks.filter(function (t) {
+      if (filter === "mine") return t.task_assignees.some(function (a) { return a.user_id === me.id; });
+      if (filter === "all") return true;
+      return t.status === filter;
+    }).sort(function (a, b) {
+      var da = a.status === "done" ? 1 : 0, db_ = b.status === "done" ? 1 : 0;
+      if (da !== db_) return da - db_;
+      if (a.due_date && b.due_date) return a.due_date < b.due_date ? -1 : 1;
+      if (a.due_date) return -1; if (b.due_date) return 1;
+      return 0;
+    });
+  }
+
+  function render() {
+    var list = $("list"); list.textContent = "";
+    var rows = visible();
+    $("counts").textContent = "전체 " + tasks.length + "건 중 " + rows.length + "건 표시";
+    if (!rows.length) { list.appendChild(el("div", "empty", tasks.length ? "해당하는 업무가 없어요." : "아직 등록된 업무가 없어요. '+ 새 업무'로 시작해 보세요.")); return; }
+    rows.forEach(function (t) {
+      var card = el("div", "task" + (t.status === "done" ? " done" : ""));
+      card.appendChild(el("div", "title", t.title));
+      var act = el("div", "actions");
+      if (canEdit(t)) {
+        var sel = document.createElement("select"); sel.setAttribute("aria-label", "상태");
+        Object.keys(STATUS).forEach(function (k) { var o = el("option", "", STATUS[k]); o.value = k; if (k === t.status) o.selected = true; sel.appendChild(o); });
+        sel.onchange = function () { setStatus(t, sel.value); };
+        act.appendChild(sel);
+        var eb = el("button", "ghost", "수정"); eb.onclick = function () { openDlg(t); }; act.appendChild(eb);
+      } else { act.appendChild(el("span", "who", STATUS[t.status])); }
+      if (canDelete(t)) { var del = el("button", "ghost danger", "삭제"); del.onclick = function () { remove(t); }; act.appendChild(del); }
+      card.appendChild(act);
+      if (t.description) card.appendChild(el("div", "desc", t.description));
+      var meta = el("div", "meta");
+      if (t.task_assignees.length) {
+        t.task_assignees.forEach(function (a) { meta.appendChild(el("span", "who" + (a.user_id === me.id ? " me" : ""), nameOf(a.user_id))); });
+      } else { meta.appendChild(el("span", "by", "담당자 없음")); }
+      if (t.due_date) { meta.appendChild(el("span", "due" + (t.status !== "done" && t.due_date < today() ? " late" : ""), "마감 " + t.due_date)); }
+      meta.appendChild(el("span", "by", "등록 " + nameOf(t.created_by)));
+      card.appendChild(meta);
+      list.appendChild(card);
+    });
+  }
+
+  async function setStatus(t, status) {
+    var r = await db.from("tasks").update({ status: status, updated_at: new Date().toISOString() }).eq("id", t.id);
+    if (r.error) notice("상태를 바꾸지 못했어요: " + r.error.message);
+    await load();
+  }
+
+  async function remove(t) {
+    if (!confirm("'" + t.title + "' 업무를 삭제할까요? 되돌릴 수 없어요.")) return;
+    var r = await db.from("tasks").delete().eq("id", t.id);
+    if (r.error) notice("삭제하지 못했어요: " + r.error.message);
+    await load();
+  }
+
+  function openDlg(t) {
+    editing = t || null;
+    $("dlg-title").textContent = t ? "업무 수정" : "새 업무";
+    $("f-title").value = t ? t.title : "";
+    $("f-desc").value = t ? t.description : "";
+    $("f-due").value = t && t.due_date ? t.due_date : "";
+    $("f-status").value = t ? t.status : "todo";
+    var chosen = t ? t.task_assignees.map(function (a) { return a.user_id; }) : [me.id];
+    var box = $("people"); box.textContent = "";
+    members.forEach(function (m) {
+      var lab = document.createElement("label");
+      var cb = document.createElement("input"); cb.type = "checkbox"; cb.value = m.id; cb.checked = chosen.indexOf(m.id) >= 0;
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(m.name || m.email));
+      box.appendChild(lab);
+    });
+    $("dlg").showModal();
+    $("f-title").focus();
+  }
+
+  $("btn-new").onclick = function () { openDlg(null); };
+  $("btn-cancel").onclick = function () { $("dlg").close(); };
+
+  $("form").onsubmit = async function (e) {
+    e.preventDefault();
+    var btn = $("btn-save"); btn.disabled = true;
+    var fields = {
+      title: $("f-title").value.trim(), description: $("f-desc").value.trim(),
+      due_date: $("f-due").value || null, status: $("f-status").value
+    };
+    var picked = Array.prototype.map.call($("people").querySelectorAll("input:checked"), function (c) { return c.value; });
+    var id, err;
+    if (editing) {
+      id = editing.id;
+      var u = await db.from("tasks").update(Object.assign({ updated_at: new Date().toISOString() }, fields)).eq("id", id);
+      err = u.error;
+    } else {
+      var c = await db.from("tasks").insert(fields).select("id").single();
+      err = c.error; id = c.data && c.data.id;
+    }
+    if (!err) {
+      var before = editing ? editing.task_assignees.map(function (a) { return a.user_id; }) : [];
+      var add = picked.filter(function (x) { return before.indexOf(x) < 0; });
+      var drop = before.filter(function (x) { return picked.indexOf(x) < 0; });
+      if (add.length) { var a = await db.from("task_assignees").insert(add.map(function (u) { return { task_id: id, user_id: u }; })); err = a.error; }
+      if (!err && drop.length) { var d = await db.from("task_assignees").delete().eq("task_id", id).in("user_id", drop); err = d.error; }
+    }
+    btn.disabled = false;
+    if (err) { notice("저장하지 못했어요: " + err.message); }
+    $("dlg").close();
+    await load();
+  };
+
+  $("filters").onclick = function (e) {
+    var b = e.target.closest("button[data-f]"); if (!b) return;
+    filter = b.dataset.f;
+    Array.prototype.forEach.call($("filters").children, function (x) { x.setAttribute("aria-pressed", x === b); });
+    render();
+  };
+
+  window.addEventListener("focus", load);
+  load();
+});
+</script>
+</body>
+</html>

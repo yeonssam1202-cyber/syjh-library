@@ -15,10 +15,20 @@
     });
   }
 
+  // 보호된 화면의 스크립트는 window.whenAuthed.then(profile => ...) 로 인증 완료 후 시작합니다.
+  var resolveAuthed;
+  window.whenAuthed = new Promise(function (ok) { resolveAuthed = ok; });
+
   function addLogoutBar(p) {
     var bar = document.createElement("div");
     bar.style.cssText = "position:fixed;top:10px;right:14px;z-index:100000;display:flex;gap:10px;align-items:center;" +
       "background:#fff;border:1px solid #ddd;border-radius:999px;padding:6px 8px 6px 14px;font:13px/1 -apple-system,'Malgun Gothic',sans-serif;color:#201f1d;box-shadow:0 1px 6px rgba(0,0,0,.08)";
+    [["홈", "app.html"], ["업무 목록", "tasks.html"]].forEach(function (l) {
+      var a = document.createElement("a");
+      a.textContent = l[0]; a.href = base + l[1];
+      a.style.cssText = "color:#7d5411;text-decoration:none;font-weight:600";
+      bar.appendChild(a);
+    });
     var who = document.createElement("span");
     who.textContent = (p.name || p.email || "") + (p.role === "admin" ? " (관리자)" : "");
     var btn = document.createElement("button");
@@ -37,6 +47,7 @@
       var p = Auth.configured ? await Auth.getProfile() : null;
       if (!p || p.status !== "approved") { location.replace(loginUrl); return; }
       hide.remove();
+      resolveAuthed(p);
       if (document.body) addLogoutBar(p);
       else document.addEventListener("DOMContentLoaded", function () { addLogoutBar(p); });
     } catch (e) {

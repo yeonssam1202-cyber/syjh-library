@@ -7,6 +7,13 @@
   hide.textContent = "html{visibility:hidden!important}";
   document.head.appendChild(hide);
 
+  // 폰에서는 상단바가 화면을 가리지 않도록 아래쪽에 가로로 펼쳐 둡니다.
+  var phone = document.createElement("style");
+  phone.textContent = "@media (max-width:820px){#app-bar{top:auto!important;bottom:10px!important;left:10px!important;right:10px!important;" +
+    "justify-content:space-between!important;border-radius:14px!important;padding:8px 10px!important;font-size:14px!important}" +
+    "#app-bar button,#app-bar a{padding:8px 10px!important}}";
+  document.head.appendChild(phone);
+
   function load(src) {
     return new Promise(function (ok, fail) {
       var s = document.createElement("script");
@@ -21,6 +28,7 @@
 
   function addLogoutBar(p) {
     var bar = document.createElement("div");
+    bar.id = "app-bar";
     bar.style.cssText = "position:fixed;top:10px;right:14px;z-index:100000;display:flex;gap:10px;align-items:center;" +
       "background:#fff;border:1px solid #ddd;border-radius:999px;padding:6px 8px 6px 14px;font:13px/1 -apple-system,'Malgun Gothic',sans-serif;color:#201f1d;box-shadow:0 1px 6px rgba(0,0,0,.08)";
     [["홈", "app.html"], ["업무 목록", "tasks.html"]].forEach(function (l) {

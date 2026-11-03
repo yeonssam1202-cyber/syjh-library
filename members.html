@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>작은도서관 운영위원회 · 회원 승인</title>
+<script src="guard.js"></script>
+<style>
+  :root { --bg:#f3f2f2; --text:#201f1d; --muted:#6c6b69; --accent:#b68235; --accent-700:#7d5411; --line:#dcdad7; --err:#a8321f; --ok:#2f6b3a; }
+  * { box-sizing:border-box; margin:0; }
+  body { min-height:100vh; padding:64px 20px 80px; background:var(--bg); color:var(--text);
+    font:16px/1.6 "IBM Plex Sans KR","Malgun Gothic",-apple-system,sans-serif; }
+  main { max-width:900px; margin:0 auto; }
+  .mark { font-size:13px; letter-spacing:.06em; color:var(--accent-700); }
+  h1 { font-size:26px; font-weight:600; margin:4px 0 6px; }
+  .sub { color:var(--muted); font-size:14px; margin-bottom:22px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px 22px; margin-bottom:18px; }
+  h2 { font-size:17px; margin-bottom:10px; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); font-size:15px; vertical-align:middle; }
+  th { font-size:13px; color:var(--muted); font-weight:500; }
+  button { font:inherit; border:0; border-radius:4px; padding:7px 12px; cursor:pointer; background:var(--accent-700); color:#fff; font-weight:600; margin:2px 4px 2px 0; }
+  button.ghost { background:#fff; color:var(--text); border:1px solid var(--line); font-weight:500; }
+  button.danger { background:#fff; color:var(--err); border:1px solid var(--line); font-weight:500; }
+  button:disabled { opacity:.6; cursor:default; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:13px; }
+  .b-pending { background:#f6efe2; color:var(--accent-700); }
+  .b-approved { background:#e8f3ea; color:var(--ok); }
+  .b-rejected { background:#fbeae6; color:var(--err); }
+  .msg { margin-top:12px; padding:10px 12px; border-radius:4px; font-size:14px; display:none; }
+  .msg.err { display:block; background:#fbeae6; color:var(--err); }
+  .msg.ok { display:block; background:#e8f3ea; color:var(--ok); }
+  .empty { color:var(--muted); padding:12px 0; }
+  .hide { display:none; }
+  @media (max-width:640px) { th.hide-sm, td.hide-sm { display:none; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="mark">작은도서관 운영위원회</div>
+  <h1>회원 승인</h1>
+  <p class="sub">가입 신청한 위원을 승인하거나 거절합니다. 관리자만 볼 수 있어요.</p>
+  <div id="denied" class="card hide">관리자만 사용할 수 있는 화면이에요. <a href="app.html">홈으로 돌아가기</a></div>
+  <div id="msg" class="msg"></div>
+
+  <section class="card hide" id="box-pending">
+    <h2>승인 대기 <span id="cnt-pending"></span></h2>
+    <table><tbody id="rows-pending"></tbody></table>
+    <div id="empty-pending" class="empty hide">승인을 기다리는 신청이 없어요.</div>
+  </section>
+
+  <section class="card hide" id="box-all">
+    <h2>전체 회원</h2>
+    <table>
+      <thead><tr><th>이름</th><th class="hide-sm">이메일</th><th class="hide-sm">가입일</th><th>상태</th><th></th></tr></thead>
+      <tbody id="rows-all"></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+(function () {
+  var LABEL = { pending: "승인 대기", approved: "승인됨", rejected: "거절됨" };
+  var msgEl = document.getElementById("msg");
+  function show(t, k) { msgEl.textContent = t; msgEl.className = "msg " + (k || "err"); }
+  function clearMsg() { msgEl.className = "msg"; msgEl.textContent = ""; }
+  function cell(text, cls) { var td = document.createElement("td"); td.textContent = text || ""; if (cls) td.className = cls; return td; }
+  function badge(status) {
+    var s = document.createElement("span"); s.className = "badge b-" + status; s.textContent = LABEL[status] || status; return s;
+  }
+
+  window.whenAuthed.then(function (me) {
+    if (me.role !== "admin") { document.getElementById("denied").classList.remove("hide"); return; }
+    document.getElementById("box-pending").classList.remove("hide");
+    document.getElementById("box-all").classList.remove("hide");
+    var client = Auth.client;
+
+    async function setField(row, patch, okText) {
+      clearMsg();
+      var r = await client.from("profiles").update(patch).eq("id", row.id);
+      if (r.error) { show("바꾸지 못했어요: " + r.error.message); return; }
+      show(okText, "ok"); load();
+    }
+    function who(row) { return (row.name || "이름 없음") + " (" + (row.email || "") + ")"; }
+
+    function actions(row) {
+      var wrap = document.createDocumentFragment();
+      function btn(text, cls, fn) {
+        var b = document.createElement("button"); b.type = "button"; b.textContent = text; if (cls) b.className = cls;
+        b.onclick = fn; wrap.appendChild(b);
+      }
+      if (row.id === me.id) { var t = document.createElement("span"); t.style.color = "var(--muted)"; t.textContent = "내 계정"; wrap.appendChild(t); return wrap; }
+      if (row.status !== "approved") btn("승인", "", function () { setField(row, { status: "approved" }, who(row) + " 님을 승인했어요."); });
+      if (row.status === "pending") btn("거절", "danger", function () { if (confirm(who(row) + " 님의 가입을 거절할까요?")) setField(row, { status: "rejected" }, "거절했어요."); });
+      if (row.status === "approved") btn("승인 취소", "ghost", function () { if (confirm(who(row) + " 님의 접속을 막을까요?")) setField(row, { status: "rejected" }, "접속을 막았어요."); });
+      if (row.status === "rejected") btn("대기로 되돌리기", "ghost", function () { setField(row, { status: "pending" }, "대기 상태로 되돌렸어요."); });
+      if (row.status === "approved") {
+        if (row.role === "admin") btn("관리자 해제", "ghost", function () { if (confirm(who(row) + " 님의 관리자 권한을 해제할까요?")) setField(row, { role: "member" }, "관리자 권한을 해제했어요."); });
+        else btn("관리자로 지정", "ghost", function () { if (confirm(who(row) + " 님을 관리자로 지정할까요? 관리자는 회원 승인과 자료 올리기를 할 수 있어요.")) setField(row, { role: "admin" }, "관리자로 지정했어요."); });
+      }
+      return wrap;
+    }
+
+    async function load() {
+      var r = await client.from("profiles").select("id,name,email,status,role,created_at").order("created_at", { ascending: false });
+      if (r.error) { show("목록을 불러오지 못했어요: " + r.error.message); return; }
+      var pend = r.data.filter(function (x) { return x.status === "pending"; });
+      var tp = document.getElementById("rows-pending"), ta = document.getElementById("rows-all");
+      tp.textContent = ""; ta.textContent = "";
+      document.getElementById("cnt-pending").textContent = pend.length ? "(" + pend.length + "명)" : "";
+      document.getElementById("empty-pending").classList.toggle("hide", pend.length > 0);
+      pend.forEach(function (row) {
+        var tr = document.createElement("tr");
+        tr.appendChild(cell(row.name || "이름 없음")); tr.appendChild(cell(row.email, "hide-sm"));
+        tr.appendChild(cell(String(row.created_at || "").slice(0, 10), "hide-sm"));
+        var td = document.createElement("td"); td.appendChild(actions(row)); tr.appendChild(td); tp.appendChild(tr);
+      });
+      r.data.forEach(function (row) {
+        var tr = document.createElement("tr");
+        tr.appendChild(cell((row.name || "이름 없음") + (row.role === "admin" ? " · 관리자" : "")));
+        tr.appendChild(cell(row.email, "hide-sm"));
+        tr.appendChild(cell(String(row.created_at || "").slice(0, 10), "hide-sm"));
+        var ts = document.createElement("td"); ts.appendChild(badge(row.status)); tr.appendChild(ts);
+        var td = document.createElement("td"); td.appendChild(actions(row)); tr.appendChild(td); ta.appendChild(tr);
+      });
+    }
+    load();
+  });
+})();
+</script>
+</body>
+</html>

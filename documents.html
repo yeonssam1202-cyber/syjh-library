@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>작은도서관 운영위원회 · 자료실</title>
+<script src="guard.js"></script>
+<style>
+  :root { --bg:#f3f2f2; --text:#201f1d; --muted:#6c6b69; --accent:#b68235; --accent-700:#7d5411; --line:#dcdad7; --err:#a8321f; --ok:#2f6b3a; }
+  * { box-sizing:border-box; margin:0; }
+  body { min-height:100vh; padding:64px 20px 80px; background:var(--bg); color:var(--text);
+    font:16px/1.6 "IBM Plex Sans KR","Malgun Gothic",-apple-system,sans-serif; }
+  main { max-width:860px; margin:0 auto; }
+  .mark { font-size:13px; letter-spacing:.06em; color:var(--accent-700); }
+  h1 { font-size:26px; font-weight:600; margin:4px 0 6px; }
+  .sub { color:var(--muted); font-size:14px; margin-bottom:22px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px 22px; margin-bottom:18px; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); font-size:15px; vertical-align:middle; }
+  th { font-size:13px; color:var(--muted); font-weight:500; }
+  td.num, th.num { text-align:right; white-space:nowrap; }
+  button { font:inherit; border:0; border-radius:4px; padding:8px 14px; cursor:pointer; background:var(--accent-700); color:#fff; font-weight:600; }
+  button.ghost { background:#fff; color:var(--err); border:1px solid var(--line); font-weight:500; }
+  button:disabled { opacity:.6; cursor:default; }
+  .msg { margin-top:12px; padding:10px 12px; border-radius:4px; font-size:14px; display:none; }
+  .msg.err { display:block; background:#fbeae6; color:var(--err); }
+  .msg.ok { display:block; background:#e8f3ea; color:var(--ok); }
+  .empty { color:var(--muted); padding:18px 0; }
+  .upload label { display:block; font-size:14px; margin:0 0 6px; }
+  .upload input[type=text] { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:4px; font:inherit; margin-bottom:10px; }
+  .upload input[type=file] { margin-bottom:12px; max-width:100%; }
+  .note { color:var(--muted); font-size:13px; margin-top:10px; }
+  .hide { display:none; }
+  @media (max-width:600px) { th.hide-sm, td.hide-sm { display:none; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="mark">작은도서관 운영위원회</div>
+  <h1>자료실</h1>
+  <p class="sub">로그인한 승인 위원만 내려받을 수 있는 자료예요. 외부에 공유하지 말아 주세요.</p>
+
+  <section class="card">
+    <table>
+      <thead><tr><th>자료</th><th class="num hide-sm">크기</th><th class="hide-sm">올린 날</th><th class="num"></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="empty" class="empty hide">아직 올라온 자료가 없어요.</div>
+    <div id="msg" class="msg"></div>
+  </section>
+
+  <section class="card upload hide" id="admin-box">
+    <h2 style="font-size:17px;margin-bottom:12px">자료 올리기 (관리자)</h2>
+    <label for="f-title">화면에 보일 이름 (비워 두면 파일 이름)</label>
+    <input id="f-title" type="text" maxlength="80">
+    <input id="f-file" type="file">
+    <div><button id="btn-up" type="button">올리기</button></div>
+    <div class="note">파일당 20MB까지 올릴 수 있어요. 올린 파일은 비공개 저장소에 보관됩니다.</div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var BUCKET = "committee-docs";
+  var rowsEl = document.getElementById("rows");
+  var emptyEl = document.getElementById("empty");
+  var msgEl = document.getElementById("msg");
+
+  function show(text, kind) { msgEl.textContent = text; msgEl.className = "msg " + (kind || "err"); }
+  function clear() { msgEl.className = "msg"; msgEl.textContent = ""; }
+  function fmtSize(n) {
+    if (n < 1024) return n + " B";
+    if (n < 1048576) return (n / 1024).toFixed(0) + " KB";
+    return (n / 1048576).toFixed(1) + " MB";
+  }
+  function fmtDate(s) { return s ? String(s).slice(0, 10) : ""; }
+  function safeExt(name) {
+    var m = /\.([A-Za-z0-9]{1,8})$/.exec(name || "");
+    return m ? "." + m[1].toLowerCase() : "";
+  }
+
+  window.whenAuthed.then(function (me) {
+    var client = Auth.client;
+    var isAdmin = me.role === "admin";
+    if (isAdmin) document.getElementById("admin-box").classList.remove("hide");
+
+    async function load() {
+      var r = await client.from("documents").select("id,path,title,orig_name,size_bytes,created_at").order("created_at", { ascending: false });
+      rowsEl.textContent = "";
+      if (r.error) { show("목록을 불러오지 못했어요: " + r.error.message); return; }
+      emptyEl.classList.toggle("hide", r.data.length > 0);
+      r.data.forEach(function (d) {
+        var tr = document.createElement("tr");
+        var td1 = document.createElement("td"); td1.textContent = d.title || d.orig_name;
+        var td2 = document.createElement("td"); td2.className = "num hide-sm"; td2.textContent = fmtSize(d.size_bytes || 0);
+        var td3 = document.createElement("td"); td3.className = "hide-sm"; td3.textContent = fmtDate(d.created_at);
+        var td4 = document.createElement("td"); td4.className = "num";
+        var dl = document.createElement("button"); dl.type = "button"; dl.textContent = "다운로드";
+        dl.onclick = async function () {
+          clear(); dl.disabled = true;
+          var s = await client.storage.from(BUCKET).createSignedUrl(d.path, 60, { download: d.orig_name });
+          dl.disabled = false;
+          if (s.error || !s.data) { show("다운로드 주소를 만들지 못했어요: " + (s.error ? s.error.message : "")); return; }
+          location.href = s.data.signedUrl;
+        };
+        td4.appendChild(dl);
+        if (isAdmin) {
+          var del = document.createElement("button"); del.type = "button"; del.className = "ghost"; del.textContent = "삭제"; del.style.marginLeft = "6px";
+          del.onclick = async function () {
+            if (!confirm("'" + (d.title || d.orig_name) + "' 자료를 삭제할까요? 되돌릴 수 없어요.")) return;
+            clear();
+            var rm = await client.storage.from(BUCKET).remove([d.path]);
+            if (rm.error) { show("삭제하지 못했어요: " + rm.error.message); return; }
+            var dr = await client.from("documents").delete().eq("id", d.id);
+            if (dr.error) { show("목록에서 지우지 못했어요: " + dr.error.message); return; }
+            show("삭제했어요.", "ok"); load();
+          };
+          td4.appendChild(del);
+        }
+        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+        rowsEl.appendChild(tr);
+      });
+    }
+
+    var up = document.getElementById("btn-up");
+    up.onclick = async function () {
+      clear();
+      var f = document.getElementById("f-file").files[0];
+      if (!f) { show("올릴 파일을 먼저 선택해 주세요."); return; }
+      if (f.size > 20971520) { show("파일이 20MB보다 커요."); return; }
+      up.disabled = true;
+      var key = Date.now() + "-" + Math.random().toString(36).slice(2, 8) + safeExt(f.name);
+      var u = await client.storage.from(BUCKET).upload(key, f, { contentType: f.type || "application/octet-stream", upsert: false });
+      if (u.error) { up.disabled = false; show("올리지 못했어요: " + u.error.message); return; }
+      var title = document.getElementById("f-title").value.trim() || f.name;
+      var ins = await client.from("documents").insert({ path: key, title: title, orig_name: f.name, size_bytes: f.size });
+      up.disabled = false;
+      if (ins.error) {
+        await client.storage.from(BUCKET).remove([key]);
+        show("목록에 등록하지 못했어요: " + ins.error.message); return;
+      }
+      document.getElementById("f-file").value = ""; document.getElementById("f-title").value = "";
+      show("올렸어요.", "ok"); load();
+    };
+
+    load();
+  });
+})();
+</script>
+</body>
+</html>

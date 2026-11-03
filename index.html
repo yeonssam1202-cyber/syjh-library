@@ -25,7 +25,12 @@
   .msg.err { display:block; background:#fbeae6; color:var(--err); }
   .msg.ok { display:block; background:#e8f3ea; color:var(--ok); }
   .msg.info { display:block; background:#f6efe2; color:var(--accent-700); }
-  .hint { color:var(--muted); font-size:13px; margin-top:6px; }
+  .hint { color:var(--muted); font-size:14px; margin-top:6px; }
+  .linkbtn { display:block; margin:14px auto 0; background:none; border:0; color:var(--accent-700); font:inherit; font-size:14px; text-decoration:underline; cursor:pointer; padding:4px 8px; }
+  .privacy { margin-top:18px; padding:12px 14px; background:#f8f7f5; border:1px solid var(--line); border-radius:4px; font-size:14px; }
+  .privacy ul { margin:6px 0 0 18px; padding:0; color:var(--muted); }
+  .agree { display:flex; align-items:center; gap:8px; margin-top:14px; cursor:pointer; }
+  .agree input { width:20px; height:20px; accent-color:var(--accent-700); }
   .hide { display:none; }
 </style>
 </head>
@@ -46,6 +51,16 @@
     <label for="l-pw">비밀번호</label>
     <input id="l-pw" type="password" required autocomplete="current-password">
     <button class="submit" type="submit">로그인</button>
+    <button class="linkbtn" type="button" id="btn-forgot">비밀번호를 잊으셨나요?</button>
+  </form>
+
+  <form id="form-reset" class="hide" autocomplete="on">
+    <label for="r-pw">새 비밀번호</label>
+    <input id="r-pw" type="password" required minlength="8" autocomplete="new-password">
+    <div class="hint">8자 이상으로 정해 주세요.</div>
+    <label for="r-pw2">새 비밀번호 한 번 더</label>
+    <input id="r-pw2" type="password" required minlength="8" autocomplete="new-password">
+    <button class="submit" type="submit">비밀번호 바꾸기</button>
   </form>
 
   <form id="form-signup" class="hide" autocomplete="on">
@@ -56,6 +71,16 @@
     <label for="s-pw">비밀번호</label>
     <input id="s-pw" type="password" required minlength="8" autocomplete="new-password">
     <div class="hint">8자 이상으로 정해 주세요.</div>
+    <div class="privacy">
+      <strong>개인정보 수집·이용 안내</strong>
+      <ul>
+        <li>수집 항목: 이름, 이메일, 비밀번호(암호화 저장)</li>
+        <li>이용 목적: 운영위원 본인 확인, 가입 승인, 업무 배정·연락</li>
+        <li>보관 기간: 운영위원으로 활동하는 동안. 위원 자격이 끝나거나 삭제를 요청하시면 삭제합니다.</li>
+        <li>동의하지 않으셔도 되지만, 이 경우 가입할 수 없어요.</li>
+      </ul>
+    </div>
+    <label class="agree"><input id="s-agree" type="checkbox" required> 위 내용을 읽었고 동의합니다</label>
     <button class="submit" type="submit">가입 신청</button>
   </form>
 
@@ -77,6 +102,8 @@
     $("tab-signup").setAttribute("aria-selected", !login);
     $("form-login").classList.toggle("hide", !login);
     $("form-signup").classList.toggle("hide", login);
+    $("form-reset").classList.add("hide");
+    document.querySelector(".tabs").classList.remove("hide");
     clear();
   }
   $("tab-login").onclick = function () { setTab(true); };
@@ -130,7 +157,48 @@
     show("ok", "가입 신청이 접수됐어요. 관리자가 승인하면 로그인할 수 있습니다.");
   };
 
-  routeByStatus();
+  // 비밀번호 찾기: 메일의 링크로 돌아오면 새 비밀번호 입력 화면을 보여 줍니다.
+  var base = location.href.replace(/[#?].*$/, "").replace(/[^/]*$/, "");
+  $("btn-forgot").onclick = async function () {
+    clear();
+    var email = $("l-email").value.trim();
+    if (!email) { show("err", "위의 이메일 칸에 가입한 이메일을 먼저 적어 주세요."); $("l-email").focus(); return; }
+    var r = await Auth.client.auth.resetPasswordForEmail(email, { redirectTo: base + "index.html" });
+    if (r.error) { show("err", errText(r.error)); return; }
+    show("ok", "가입된 이메일이라면 비밀번호를 바꾸는 링크를 보냈어요. 메일이 안 보이면 스팸함도 확인해 주세요.");
+  };
+
+  function showResetForm() {
+    $("form-login").classList.add("hide");
+    $("form-signup").classList.add("hide");
+    document.querySelector(".tabs").classList.add("hide");
+    $("form-reset").classList.remove("hide");
+    $("r-pw").focus();
+  }
+
+  $("form-reset").onsubmit = async function (e) {
+    e.preventDefault(); clear();
+    if ($("r-pw").value !== $("r-pw2").value) { show("err", "두 비밀번호가 서로 달라요. 다시 확인해 주세요."); return; }
+    var btn = e.target.querySelector(".submit"); btn.disabled = true;
+    var r = await Auth.client.auth.updateUser({ password: $("r-pw").value });
+    btn.disabled = false;
+    if (r.error) { show("err", /same|different/i.test(r.error.message) ? "이전과 다른 비밀번호로 정해 주세요." : errText(r.error)); return; }
+    await Auth.client.auth.signOut();
+    history.replaceState(null, "", location.pathname);
+    e.target.reset();
+    setTab(true);
+    show("ok", "비밀번호를 바꿨어요. 새 비밀번호로 로그인해 주세요.");
+  };
+
+  var hash = location.hash || "";
+  if (/type=recovery/.test(hash)) {
+    showResetForm();                       // 새 비밀번호를 정하기 전에는 화면으로 보내지 않음
+  } else if (/error_code=otp_expired|error=access_denied/.test(hash)) {
+    history.replaceState(null, "", location.pathname);
+    show("err", "링크가 만료됐거나 이미 사용됐어요. '비밀번호를 잊으셨나요?'를 눌러 새 링크를 받아 주세요.");
+  } else {
+    routeByStatus();
+  }
 })();
 </script>
 </body>

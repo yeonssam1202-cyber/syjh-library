@@ -66,6 +66,7 @@ window.whenAuthed.then(function (me) {
           h('button', { class: 'ghost', text: '오늘', onclick: function () { weekStart = mondayOf(new Date()); refresh(); } })),
         me.can('shifts_settings') ? h('button', { class: 'ghost', text: '설정', onclick: openSettings }) : null)));
 
+    renderRequests();   // 변경 요청·승인 현황은 맨 위에 둬서 바로 보이게
     app.appendChild(h('div', { class: 'legend noprint', text: (isVol
       ? '칸을 눌러 근무를 신청하세요. 신청한 근무를 바꾸거나 취소하려면 "변경 요청"을 올리고, 임원·담당자·관리자의 승인을 기다려 주세요. '
       : (canApprove ? '칸을 누르면 근무자를 보고 넣고 뺄 수 있어요. ' : '칸을 누르면 근무를 신청하거나 내 근무를 뺄 수 있어요. 다른 위원이 이미 들어간 근무를 바꾸는 건 임원·관리자가 해요. ')) + '빨간 줄은 필요 인원(' + settings.required + '명)보다 적은 시간이에요. 진한 갈색 이름이 나예요.' }));
@@ -109,7 +110,6 @@ window.whenAuthed.then(function (me) {
     app.appendChild(h('div', { class: 'panel', style: 'margin-top:14px' }, h('h2', { text: '이번 주 위원별 근무 횟수' }),
       keys.length ? h('div', { class: 'counts' }, keys.map(function (k) { return h('span', { class: 'badge gold', text: k + ' ' + tally[k] + '회' }); })) : h('div', { class: 'hint', text: '아직 근무가 정해지지 않았어요.' })));
 
-    renderRequests();
     renderHistory();
   }
 
@@ -126,30 +126,56 @@ window.whenAuthed.then(function (me) {
     await refresh(); U.notice('ok', okMsg);
   }
   function renderRequests() {
-    var mine = requests.filter(function (r) { return r.requested_by === me.id; });
+    var DAY14 = 14 * 86400000;
     var pend = requests.filter(function (r) { return r.status === 'pending'; });
-    if (canApprove && pend.length) {
-      var p = h('div', { class: 'panel noprint', style: 'margin-top:14px' }, h('h2', { text: '근무 변경 요청 ' + pend.length + '건 (승인 대기)' }),
-        h('div', { class: 'hint', text: '자원봉사 위원이 올린 요청이에요. 승인하면 바로 근무표가 바뀌어요.' }));
+    var recent = requests.filter(function (r) { return r.status !== 'pending' && (Date.now() - new Date(r.decided_at || r.created_at).getTime()) < DAY14; });
+    var mine = requests.filter(function (r) { return r.requested_by === me.id; })
+      .filter(function (r) { return r.status === 'pending' || recent.indexOf(r) >= 0; });
+
+    function resultLine(r) {
+      return RSTAT[r.status] + (r.decided_by_name ? ' · ' + r.decided_by_name : '') + (r.decided_at ? ' · ' + fmtDT2(r.decided_at) : '');
+    }
+
+    if (canApprove) {
+      // 승인권자(관리자·임원·근무 담당자): 대기 중인 요청을 맨 위에 크게 보여 줘요.
+      var p = h('div', { class: 'panel noprint', style: pend.length ? 'border-left:4px solid var(--accent)' : '' },
+        h('h2', { text: '근무 변경 요청 ' + (pend.length ? pend.length + '건 · 승인 대기' : '· 대기 중인 요청이 없어요') }));
+      if (pend.length) p.appendChild(h('div', { class: 'hint', text: '승인하면 바로 근무표가 바뀌고, 누가 승인했는지 이력에 남아요.' }));
       pend.forEach(function (r) {
         p.appendChild(h('div', { class: 'shiftrow', style: 'flex-wrap:wrap' },
-          h('div', null, h('div', { style: 'font-weight:600', text: r.requested_by_name + ' · ' + reqText(r) }), r.reason ? h('div', { class: 'nt', text: '이유: ' + r.reason }) : null),
+          h('div', null, h('div', { style: 'font-weight:600', text: r.requested_by_name + ' · ' + reqText(r) }),
+            h('div', { class: 'nt', text: '요청 ' + fmtDT2(r.created_at) + (r.reason ? ' · 이유: ' + r.reason : '') })),
           h('div', { class: 'bar', style: 'margin:0' },
             h('button', { class: 'primary', type: 'button', text: '승인', onclick: function () { decide(r, 'approve', '승인했어요. 근무표를 바꿨어요.'); } }),
             h('button', { class: 'ghost', type: 'button', text: '거절', onclick: async function () { if (await askBox(r.requested_by_name + ' 님의 변경 요청을 거절할까요?', '거절')) decide(r, 'reject', '거절했어요.'); } }))));
       });
+      if (recent.length) {
+        var det = h('details', { style: 'margin-top:8px' }, h('summary', { style: 'cursor:pointer;color:var(--muted)', text: '최근 2주 처리 결과 ' + recent.length + '건' }));
+        recent.forEach(function (r) {
+          det.appendChild(h('div', { class: 'shiftrow', style: 'flex-direction:column;align-items:flex-start;gap:2px' },
+            h('div', { text: r.requested_by_name + ' · ' + reqText(r) }),
+            h('div', { class: 'nt', text: resultLine(r) + (r.reason ? ' · 이유: ' + r.reason : '') })));
+        });
+        p.appendChild(det);
+      }
       app.appendChild(p);
     }
-    var show = mine.filter(function (r) { return r.status === 'pending' || (Date.now() - new Date(r.decided_at || r.created_at).getTime()) < 14 * 86400000; });
-    if (show.length) {
-      var q = h('div', { class: 'panel noprint', style: 'margin-top:14px' }, h('h2', { text: '내 변경 요청' }));
-      show.forEach(function (r) {
+
+    // 내가 올린 요청(자원봉사·일반 위원): 처리 상태를 바로 확인
+    if (mine.length) {
+      var q = h('div', { class: 'panel noprint', style: mine.some(function (r) { return r.status === 'pending'; }) ? 'border-left:4px solid var(--accent)' : '' },
+        h('h2', { text: '내 변경 요청' }));
+      mine.forEach(function (r) {
         q.appendChild(h('div', { class: 'shiftrow', style: 'flex-wrap:wrap' },
-          h('div', null, h('div', { text: reqText(r) }), h('div', { class: 'nt', text: RSTAT[r.status] + (r.decided_by_name && r.status !== 'pending' ? ' · ' + r.decided_by_name : '') + (r.reason ? ' · 이유: ' + r.reason : '') })),
+          h('div', null, h('div', { text: reqText(r) }), h('div', { class: 'nt', text: resultLine(r) + (r.reason ? ' · 이유: ' + r.reason : '') })),
           r.status === 'pending' ? h('button', { class: 'ghost', type: 'button', text: '요청 취소', onclick: function () { decide(r, 'withdraw', '요청을 취소했어요.'); } }) : null));
       });
       app.appendChild(q);
     }
+  }
+  function fmtDT2(s) {
+    var d = new Date(s);
+    return (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   }
   // ---------- 근무 이력 ----------
   function histLine(e) {

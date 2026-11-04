@@ -3,7 +3,7 @@ window.whenAuthed.then(function (me) {
   'use strict';
   var db = Auth.client;
   var BUCKET = 'meeting-photos';
-  var POS = ['위원장', '부위원장', '총무', '감사', '운영위원'];
+  var POS = ['위원장', '부위원장', '총무', '감사', '운영위원', '자원봉사'];
   var STATUS = { draft: '작성 중', signing: '서명 받는 중', closed: '마감' };
   var $ = function (id) { return document.getElementById(id); };
   var app = $('app');
@@ -156,7 +156,7 @@ window.whenAuthed.then(function (me) {
     var d = {
       id: null, seq: (prev ? prev.seq : 0) + 1, kind: '정기회의', meeting_date: today(), start_time: '10:00', end_time: '12:00',
       place: prev ? prev.place : '', author_name: me.name || '', observers: 0, agenda: '', summary: '', result: '', photos: [],
-      attendees: members.map(function (m) { return { user_id: m.id, name: m.name, position: m.position || pos[m.id] || '운영위원', attended: true }; })
+      attendees: members.filter(function (m) { return m.position !== '자원봉사'; }).map(function (m) { return { user_id: m.id, name: m.name, position: m.position || pos[m.id] || '운영위원', attended: true }; })
     };
     sortAtt(d.attendees);
     return d;
@@ -619,7 +619,7 @@ window.whenAuthed.then(function (me) {
     var sugPanel = null;
     if (isDraft) {
       sugPanel = h('div', { class: 'panel noprint' }, h('h2', { text: '수정 제안' + (pending.length ? ' (' + pending.length + '건 대기)' : '') }),
-        h('div', { class: 'bar', style: 'margin:0 0 6px' }, h('button', { class: 'ghost', type: 'button', text: '고칠 곳 제안하기', onclick: openSuggest })));
+        h('div', { class: 'bar', style: 'margin:0 0 6px' }, me.can('minutes_suggest') ? h('button', { class: 'ghost', type: 'button', text: '고칠 곳 제안하기', onclick: openSuggest }) : h('div', { class: 'hint', text: '수정 제안 권한이 없어요(열람만 가능).' })));
       if (!pending.length) sugPanel.appendChild(h('div', { class: 'hint', text: '대기 중인 제안이 없어요.' }));
       pending.forEach(function (s) {
         var item = h('div', { class: 'sug' },

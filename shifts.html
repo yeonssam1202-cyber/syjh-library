@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>근무표 · 작은도서관 운영위원회</title>
-<script src="guard.js?v=7"></script>
+<script src="guard.js?v=8"></script>
 <link rel="stylesheet" href="common.css?v=1">
 <style>
   .weekbar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
@@ -56,12 +56,14 @@
     <div class="bar" style="margin:6px 0">
       <button class="primary" type="button" id="c-me">내가 근무할게요</button>
     </div>
+    <div id="c-others">
     <label class="l" for="c-who">다른 위원 넣기</label>
     <div class="grid2">
       <select id="c-who"></select>
       <input type="text" id="c-note" maxlength="200" placeholder="메모 (선택)">
     </div>
     <div class="bar"><button class="ghost" type="button" id="c-add">위원 넣기</button></div>
+    </div>
     <label class="l" style="display:flex;gap:8px;align-items:center;color:var(--text);font-size:15px"><input type="checkbox" id="c-repeat"> 4주 동안 매주 같은 요일·시간에 반복</label>
     <div class="bar" style="margin-bottom:0"><span class="sp"></span><button class="ghost" type="button" id="c-close">닫기</button></div>
   </div>
@@ -82,6 +84,6 @@
 </dialog>
 
 <script src="ui.js?v=1"></script>
-<script src="shifts.js?v=1"></script>
+<script src="shifts.js?v=2"></script>
 </body>
 </html>

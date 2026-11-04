@@ -20,7 +20,9 @@ window.whenAuthed.then(function (me) {
     return (ws.getMonth() + 1) + '월 ' + nth + '주 · ' + md(ws) + '~' + md(we);
   }
   function at(date, slot) { var k = U.ymd(date); return shifts.filter(function (s) { return s.shift_date === k && s.slot === slot; }); }
-  function canRemove(s) { return isAdmin || s.created_by === me.id || s.user_id === me.id; }
+  var isVol = !!me.isVolunteer, canApprove = me.can('shifts_approve'), requests = [];
+  function canRemove(s) { return canApprove || (!isVol && (s.created_by === me.id || s.user_id === me.id)); }
+  function pendingFor(s) { return requests.filter(function (r) { return r.shift_id === s.id && r.status === 'pending'; })[0]; }
 
   // ---------- 데이터 ----------
   async function loadAll() {
@@ -38,12 +40,14 @@ window.whenAuthed.then(function (me) {
     var s = await db.from('shifts').select('*').gte('shift_date', U.ymd(weekStart)).lte('shift_date', U.ymd(addDays(weekStart, 6))).order('created_at');
     if (s.error) throw s.error;
     shifts = s.data;
+    var q = await db.from('shift_change_requests').select('*').order('created_at', { ascending: false }).limit(80);
+    requests = q.error ? [] : q.data;     // 표가 아직 없으면(SQL 미적용) 변경 요청 기능만 빠진 채 계속 동작
   }
   async function refresh() { try { await loadWeek(); render(); if (openCellKey && $('cell-dlg').open) fillCell(); } catch (e) { U.fail(e); } }
 
   // ---------- 화면 ----------
   function names(list) {
-    return list.map(function (s) { return h('div', { class: s.user_id === me.id ? 'me' : '', text: s.name, title: s.note || '' }); });
+    return list.map(function (s) { return h('div', { class: s.user_id === me.id ? 'me' : '', text: s.name + (pendingFor(s) ? ' (변경 요청 중)' : ''), title: s.note || '' }); });
   }
   function status(n) { return n < settings.required ? 'short' : 'ok'; }
 
@@ -60,7 +64,9 @@ window.whenAuthed.then(function (me) {
           h('button', { class: 'ghost', text: '오늘', onclick: function () { weekStart = mondayOf(new Date()); refresh(); } })),
         me.can('shifts_settings') ? h('button', { class: 'ghost', text: '설정', onclick: openSettings }) : null)));
 
-    app.appendChild(h('div', { class: 'legend noprint', text: '칸을 누르면 근무자를 보고 넣고 뺄 수 있어요. 빨간 줄은 필요 인원(' + settings.required + '명)보다 적은 시간이에요. 진한 갈색 이름이 나예요.' }));
+    app.appendChild(h('div', { class: 'legend noprint', text: (isVol
+      ? '칸을 눌러 근무를 신청하세요. 신청한 근무를 바꾸거나 취소하려면 "변경 요청"을 올리고, 임원·담당자·관리자의 승인을 기다려 주세요. '
+      : '칸을 누르면 근무자를 보고 넣고 뺄 수 있어요. ') + '빨간 줄은 필요 인원(' + settings.required + '명)보다 적은 시간이에요. 진한 갈색 이름이 나예요.' }));
 
     // 데스크톱 표
     var head = h('tr', null, h('th', { class: 'slot', text: '' }), dates.map(function (d, i) {
@@ -100,6 +106,77 @@ window.whenAuthed.then(function (me) {
     var keys = Object.keys(tally).sort(function (a, b) { return tally[b] - tally[a] || a.localeCompare(b, 'ko'); });
     app.appendChild(h('div', { class: 'panel', style: 'margin-top:14px' }, h('h2', { text: '이번 주 위원별 근무 횟수' }),
       keys.length ? h('div', { class: 'counts' }, keys.map(function (k) { return h('span', { class: 'badge gold', text: k + ' ' + tally[k] + '회' }); })) : h('div', { class: 'hint', text: '아직 근무가 정해지지 않았어요.' })));
+
+    renderRequests();
+  }
+
+  // ---------- 근무 변경 요청 ----------
+  function reqText(r) {
+    var from = fmtShort(r.shift_date) + ' ' + r.slot;
+    return r.kind === 'cancel' ? from + ' 근무 취소' : from + ' → ' + fmtShort(r.new_date) + ' ' + r.new_slot + ' 로 변경';
+  }
+  function fmtShort(s) { var d = U.parseYmd(s); return (d.getMonth() + 1) + '월 ' + d.getDate() + '일(' + DAYS[(d.getDay() + 6) % 7] + ')'; }
+  var RSTAT = { pending: '승인 대기', approved: '승인됨', rejected: '거절됨', withdrawn: '요청 취소' };
+  async function decide(r, decision, okMsg) {
+    var x = await db.rpc('decide_shift_change', { rid: r.id, decision: decision });
+    if (x.error) { U.fail(x.error); return; }
+    await refresh(); U.notice('ok', okMsg);
+  }
+  function renderRequests() {
+    var mine = requests.filter(function (r) { return r.requested_by === me.id; });
+    var pend = requests.filter(function (r) { return r.status === 'pending'; });
+    if (canApprove && pend.length) {
+      var p = h('div', { class: 'panel noprint', style: 'margin-top:14px' }, h('h2', { text: '근무 변경 요청 ' + pend.length + '건 (승인 대기)' }),
+        h('div', { class: 'hint', text: '자원봉사 위원이 올린 요청이에요. 승인하면 바로 근무표가 바뀌어요.' }));
+      pend.forEach(function (r) {
+        p.appendChild(h('div', { class: 'shiftrow', style: 'flex-wrap:wrap' },
+          h('div', null, h('div', { style: 'font-weight:600', text: r.requested_by_name + ' · ' + reqText(r) }), r.reason ? h('div', { class: 'nt', text: '이유: ' + r.reason }) : null),
+          h('div', { class: 'bar', style: 'margin:0' },
+            h('button', { class: 'primary', type: 'button', text: '승인', onclick: function () { decide(r, 'approve', '승인했어요. 근무표를 바꿨어요.'); } }),
+            h('button', { class: 'ghost', type: 'button', text: '거절', onclick: async function () { if (await askBox(r.requested_by_name + ' 님의 변경 요청을 거절할까요?', '거절')) decide(r, 'reject', '거절했어요.'); } }))));
+      });
+      app.appendChild(p);
+    }
+    var show = mine.filter(function (r) { return r.status === 'pending' || (Date.now() - new Date(r.decided_at || r.created_at).getTime()) < 14 * 86400000; });
+    if (show.length) {
+      var q = h('div', { class: 'panel noprint', style: 'margin-top:14px' }, h('h2', { text: '내 변경 요청' }));
+      show.forEach(function (r) {
+        q.appendChild(h('div', { class: 'shiftrow', style: 'flex-wrap:wrap' },
+          h('div', null, h('div', { text: reqText(r) }), h('div', { class: 'nt', text: RSTAT[r.status] + (r.decided_by_name && r.status !== 'pending' ? ' · ' + r.decided_by_name : '') + (r.reason ? ' · 이유: ' + r.reason : '') })),
+          r.status === 'pending' ? h('button', { class: 'ghost', type: 'button', text: '요청 취소', onclick: function () { decide(r, 'withdraw', '요청을 취소했어요.'); } }) : null));
+      });
+      app.appendChild(q);
+    }
+  }
+  function openChangeRequest(s) {
+    var dlg = h('dialog', { style: 'margin:auto' }), box = h('div', { class: 'dlg' }), close = function () { dlg.close(); dlg.remove(); };
+    var kind = 'cancel';
+    var rc = h('input', { type: 'radio', name: 'kind', value: 'cancel', checked: true }), rm = h('input', { type: 'radio', name: 'kind', value: 'move' });
+    var date = h('input', { type: 'date' }), slotSel = h('select', null, settings.slots.map(function (x) { return h('option', { value: x, text: x }); }));
+    date.value = s.shift_date;
+    var moveBox = h('div', { class: 'grid2', style: 'display:none' }, date, slotSel);
+    function sync() { kind = rm.checked ? 'move' : 'cancel'; moveBox.style.display = kind === 'move' ? '' : 'none'; }
+    rc.onchange = rm.onchange = sync;
+    var reason = h('input', { type: 'text', maxlength: '300', placeholder: '이유 (선택)' });
+    box.appendChild(h('h3', { text: '근무 변경 요청' }));
+    box.appendChild(h('div', { class: 'hint', text: fmtShort(s.shift_date) + ' ' + s.slot + ' 근무 · 임원, 근무 담당자, 관리자가 승인하면 바뀌어요.' }));
+    box.appendChild(h('label', { style: 'display:flex;gap:8px;align-items:center;margin:10px 0 4px', for: '' }, rc, '이 근무를 취소할게요'));
+    box.appendChild(h('label', { style: 'display:flex;gap:8px;align-items:center;margin:4px 0' }, rm, '다른 날짜·시간으로 옮길게요'));
+    box.appendChild(moveBox);
+    box.appendChild(h('label', { class: 'l', text: '이유' })); box.appendChild(reason);
+    var send = h('button', { class: 'primary', type: 'button', text: '요청 보내기', onclick: async function () {
+      if (kind === 'move' && (!date.value || (date.value === s.shift_date && slotSel.value === s.slot))) { await sayBox('옮길 날짜나 시간을 다르게 골라 주세요.'); return; }
+      if (kind === 'move' && isClosed(U.parseYmd(date.value))) { await sayBox('휴관일로는 옮길 수 없어요.'); return; }
+      send.disabled = true;
+      var row = { shift_id: s.id, kind: kind, reason: reason.value.trim() };
+      if (kind === 'move') { row.new_date = date.value; row.new_slot = slotSel.value; }
+      var x = await db.from('shift_change_requests').insert(row);
+      send.disabled = false;
+      if (x.error) { await sayBox(/duplicate|unique/i.test(x.error.message) ? '이미 승인을 기다리는 요청이 있어요.' : U.friendly(x.error)); return; }
+      close(); cdlg.close(); await refresh(); U.notice('ok', '요청했어요. 승인되면 근무표가 바뀌어요.');
+    } });
+    box.appendChild(h('div', { class: 'bar', style: 'margin:14px 0 0' }, h('span', { class: 'sp' }), h('button', { class: 'ghost', type: 'button', text: '닫기', onclick: close }), send));
+    dlg.appendChild(box); document.body.appendChild(dlg); dlg.showModal();
   }
 
   // ---------- 칸 대화창 ----------
@@ -114,8 +191,12 @@ window.whenAuthed.then(function (me) {
     list.forEach(function (s) {
       box.appendChild(h('div', { class: 'shiftrow' },
         h('div', null, h('span', { class: s.user_id === me.id ? 'me' : '', style: s.user_id === me.id ? 'font-weight:700;color:var(--accent-700)' : '', text: s.name }), s.note ? h('div', { class: 'nt', text: s.note }) : null),
-        canRemove(s) ? h('button', { class: 'ghost danger', type: 'button', text: '빼기', onclick: function () { removeShift(s); } }) : null));
+        canRemove(s) ? h('button', { class: 'ghost danger', type: 'button', text: '빼기', onclick: function () { removeShift(s); } })
+          : (s.user_id === me.id && isVol
+              ? (pendingFor(s) ? h('span', { class: 'nt', text: '변경 요청 중' }) : h('button', { class: 'ghost', type: 'button', text: '변경 요청', onclick: function () { openChangeRequest(s); } }))
+              : null)));
     });
+    $('c-others').style.display = isVol ? 'none' : '';
     var mine = list.some(function (s) { return s.user_id === me.id; });
     $('c-me').disabled = mine; $('c-me').textContent = mine ? '이미 근무에 들어 있어요' : '내가 근무할게요';
     var sel = $('c-who'); sel.textContent = '';

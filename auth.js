@@ -12,7 +12,8 @@
     var s = await client.auth.getSession();
     var user = s.data.session && s.data.session.user;
     if (!user) return null;
-    var r = await client.from("profiles").select("name,email,status,role,position").eq("id", user.id).maybeSingle();
+    var r = await client.from("profiles").select("name,email,status,role,position,shift_manager").eq("id", user.id).maybeSingle();
+    if (r.error) r = await client.from("profiles").select("name,email,status,role,position").eq("id", user.id).maybeSingle();
     if (r.error) r = await client.from("profiles").select("name,email,status,role").eq("id", user.id).maybeSingle();
     if (!r.data) return { id: user.id, status: "pending", name: "", email: user.email, can: function () { return false; } };
     var p = Object.assign({ id: user.id, position: "운영위원" }, r.data), perms = {};
@@ -21,7 +22,9 @@
       var pr = await client.from("role_permissions").select("perm,allowed").eq("position", p.position);
       if (!pr.error && pr.data) pr.data.forEach(function (x) { perms[x.perm] = x.allowed; });
     }
-    p.can = function (perm) { return p.role === "admin" || perms[perm] === true; };
+    p.isVolunteer = p.position === "자원봉사";
+    // 근무 담당자로 지정된 위원은 직책과 상관없이 근무 변경을 승인할 수 있어요.
+    p.can = function (perm) { return p.role === "admin" || perms[perm] === true || (perm === "shifts_approve" && p.shift_manager === true); };
     return p;
   }
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>업무 목록 · 작은도서관 운영위원회</title>
-<script src="guard.js?v=7"></script>
+<script src="guard.js?v=8"></script>
 <style>
   :root { --bg:#f3f2f2; --text:#201f1d; --muted:#6c6b69; --accent:#b68235; --accent-700:#7d5411; --line:#dcdad7; --err:#a8321f; --card:#fff; }
   * { box-sizing:border-box; margin:0; }
@@ -112,8 +112,8 @@ window.whenAuthed.then(function (me) {
   function notice(text) { var n = $("notice"); n.textContent = text || ""; n.classList.toggle("show", !!text); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function today() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
-  function canEdit(t) { return me.role === "admin" || t.created_by === me.id || t.task_assignees.some(function (a) { return a.user_id === me.id; }); }
-  function canDelete(t) { return me.role === "admin" || t.created_by === me.id; }
+  function canEdit(t) { return me.can("tasks_write") && (me.role === "admin" || t.created_by === me.id || t.task_assignees.some(function (a) { return a.user_id === me.id; })); }
+  function canDelete(t) { return me.can("tasks_write") && (me.role === "admin" || t.created_by === me.id); }
 
   async function load() {
     var m = await db.from("profiles").select("id,name,email").eq("status", "approved").order("name");
@@ -205,6 +205,7 @@ window.whenAuthed.then(function (me) {
     $("f-title").focus();
   }
 
+  if (!me.can("tasks_write")) $("btn-new").style.display = "none";
   $("btn-new").onclick = function () { openDlg(null); };
   $("btn-cancel").onclick = function () { $("dlg").close(); };
 

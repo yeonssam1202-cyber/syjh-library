@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공지 · 작은도서관 운영위원회</title>
+<script src="guard.js?v=10"></script>
+<link rel="stylesheet" href="common.css?v=3">
+<style>
+  .nlist { display:flex; flex-direction:column; gap:10px; }
+  .ncard { background:#fff; border:1px solid var(--line); border-radius:8px; }
+  .ncard.pinned { border-left:4px solid var(--accent); }
+  .ncard > summary { list-style:none; cursor:pointer; padding:14px 16px; display:flex; flex-direction:column; gap:4px; }
+  .ncard > summary::-webkit-details-marker { display:none; }
+  .ncard .t { font-weight:600; font-size:17px; }
+  .ncard .m { color:var(--muted); font-size:14px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .ncard .body { padding:0 16px 14px; white-space:pre-wrap; word-break:break-word; font-size:16px; border-top:1px solid var(--line); padding-top:12px; }
+  .ncard .acts { padding:0 16px 14px; display:flex; gap:8px; flex-wrap:wrap; }
+  .search { margin:6px 0 14px; width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:4px; font:inherit; background:#fff; }
+  textarea#n-body { min-height:240px; }
+  .pin { display:flex; gap:8px; align-items:center; margin-top:12px; font-size:15px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="notice" class="notice noprint" role="alert"></div>
+  <div id="app"></div>
+</div>
+
+<dialog id="dlg">
+  <form class="dlg" id="form" method="dialog">
+    <h3 id="d-title">공지 쓰기</h3>
+    <label class="l" for="n-title">제목</label>
+    <input type="text" id="n-title" maxlength="200" required>
+    <label class="l" for="n-body">내용</label>
+    <textarea id="n-body" maxlength="20000" required></textarea>
+    <label class="pin"><input type="checkbox" id="n-pin"> 목록 맨 위에 고정하기</label>
+    <div class="bar" style="margin-bottom:0">
+      <span class="sp"></span>
+      <button class="ghost" type="button" id="n-cancel">취소</button>
+      <button class="primary" type="submit" id="n-save">올리기</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="ui.js?v=1"></script>
+<script src="notices.js?v=1"></script>
+</body>
+</html>

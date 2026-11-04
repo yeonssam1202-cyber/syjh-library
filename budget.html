@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>예산·지출 · 작은도서관 운영위원회</title>
+<script src="guard.js?v=6"></script>
+<link rel="stylesheet" href="common.css?v=1">
+<style>
+  .yearbar { display:flex; align-items:center; gap:6px; }
+  .yearbar .y { min-width:120px; text-align:center; font-weight:600; font-size:17px; }
+  .yearbar button { padding:6px 12px; }
+  .stat .n small { font-size:15px; font-weight:400; color:var(--muted); }
+  .item { padding:12px 0; border-top:1px solid var(--line); }
+  .item:first-of-type { border-top:0; }
+  .item .row1 { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:baseline; }
+  .item .nm { font-weight:600; }
+  .item .src { color:var(--muted); font-size:13px; margin-left:6px; }
+  .item .amt { font-variant-numeric:tabular-nums; font-size:15px; }
+  .track { height:10px; background:#ece9e4; border-radius:999px; overflow:hidden; margin:6px 0 2px; }
+  .fill { height:100%; background:var(--accent); }
+  .fill.over { background:var(--err); }
+  .fill.full { background:var(--ok); }
+  table.exp { width:100%; border-collapse:collapse; font-size:15px; }
+  table.exp th { text-align:left; font-size:13px; color:var(--muted); font-weight:600; padding:8px 8px; border-bottom:1.5px solid #000; white-space:nowrap; }
+  table.exp td { padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; word-break:break-word; }
+  table.exp td.num, table.exp th.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .thumbs { display:flex; gap:4px; flex-wrap:wrap; }
+  .thumbs a { display:inline-block; border:1px solid var(--line); border-radius:4px; overflow:hidden; background:#fafafa; text-decoration:none; color:var(--accent-700); font-size:12px; }
+  .thumbs img { display:block; width:44px; height:44px; object-fit:cover; }
+  .thumbs .pdf { display:flex; width:44px; height:44px; align-items:center; justify-content:center; font-weight:600; }
+  .cards-m { display:none; }
+  .ecard { background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:8px; }
+  .ecard .t { display:flex; justify-content:space-between; gap:8px; font-weight:600; }
+  .ecard .s { color:var(--muted); font-size:14px; }
+  .warnbox { margin:8px 0; padding:9px 12px; border-radius:6px; background:#fbeae6; color:var(--err); font-size:14px; }
+  .infobox { margin:8px 0; padding:9px 12px; border-radius:6px; background:#f6efe2; color:var(--accent-700); font-size:14px; }
+  .note { font-size:14px; color:var(--muted); background:#f8f7f5; border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin:0 0 14px; }
+  .irow { display:grid; grid-template-columns:1.4fr 1fr 1.2fr auto auto; gap:8px; align-items:center; padding:8px 0; border-top:1px solid var(--line); }
+  .irow label { display:flex; gap:6px; align-items:center; font-size:14px; white-space:nowrap; }
+  .files { margin-top:6px; font-size:14px; }
+  .files .f { display:flex; justify-content:space-between; gap:8px; padding:4px 0; border-top:1px dashed var(--line); }
+  dialog { max-width:640px; }
+  .dlg { max-height:calc(100vh - 40px); overflow:auto; }
+  @media (max-width:760px) {
+    .statgrid { grid-template-columns:1fr 1fr; }
+    .stat .n { font-size:19px; }
+    table.exp { display:none; }
+    .cards-m { display:block; }
+    .irow { grid-template-columns:1fr 1fr; }
+    .irow input[type=text] { grid-column:1 / -1; }
+  }
+  @media print { .yearbar button { display:none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="notice" class="notice noprint" role="alert"></div>
+  <div id="app"></div>
+</div>
+
+<dialog id="exp-dlg">
+  <form class="dlg" id="exp-form" method="dialog">
+    <h3 id="exp-title">지출 기록</h3>
+    <div class="grid2">
+      <div><label class="l" for="e-date">날짜</label><input type="date" id="e-date" required></div>
+      <div><label class="l" for="e-item">예산 항목</label><select id="e-item" required></select></div>
+    </div>
+    <label class="l" for="e-desc">내용</label>
+    <input type="text" id="e-desc" maxlength="300" placeholder="예: 서가 라벨지 구입">
+    <div class="grid2">
+      <div><label class="l" for="e-vendor">거래처</label><input type="text" id="e-vendor" maxlength="100"></div>
+      <div><label class="l" for="e-amount">금액(원)</label><input type="number" id="e-amount" min="0" step="1" inputmode="numeric" required></div>
+    </div>
+    <label class="l" for="e-proof">증빙 종류 (필수)</label>
+    <select id="e-proof" required>
+      <option value="">선택해 주세요</option><option>카드 전표</option><option>현금영수증</option><option>세금계산서</option><option>기타</option><option>없음</option>
+    </select>
+    <div id="e-meeting-box" style="display:none">
+      <label class="l" for="e-meeting">연결할 회의록 (회의운영비)</label>
+      <select id="e-meeting"></select>
+      <div id="e-limit"></div>
+      <label class="l" style="display:flex;gap:8px;align-items:flex-start;color:var(--text);font-size:15px">
+        <input type="checkbox" id="e-alc" style="flex:none;margin-top:2px"><span>주류·개인 용도가 아니에요(확인)</span></label>
+    </div>
+    <label class="l" for="e-note">비고</label>
+    <input type="text" id="e-note" maxlength="500">
+    <label class="l">영수증 (사진 또는 PDF)</label>
+    <input type="file" id="e-files" accept="image/*,application/pdf" multiple>
+    <div class="files" id="e-filelist"></div>
+    <div class="hint">사진은 자동으로 줄여서 올려요. 파일 하나는 10MB까지예요.</div>
+    <div class="bar" style="margin-bottom:0">
+      <button class="ghost danger" type="button" id="e-del" style="display:none">삭제</button>
+      <span class="sp"></span>
+      <button class="ghost" type="button" id="e-cancel">취소</button>
+      <button class="primary" type="submit" id="e-save">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="item-dlg">
+  <form class="dlg" id="item-form" method="dialog">
+    <h3>예산 항목 편집</h3>
+    <div class="hint" id="item-year"></div>
+    <div id="item-rows"></div>
+    <div class="bar">
+      <button class="ghost" type="button" id="item-add">+ 항목 추가</button>
+      <button class="ghost" type="button" id="item-default">기본 항목 넣기</button>
+    </div>
+    <div class="hint">항목에 지출 기록이 있으면 지울 수 없어요. 회의운영비에 체크하면 세칙 한도(1인 5,000원, 월 2회)를 계산해 줘요.</div>
+    <div class="bar" style="margin-bottom:0">
+      <span class="sp"></span>
+      <button class="ghost" type="button" id="item-cancel">취소</button>
+      <button class="primary" type="submit" id="item-save">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="ui.js?v=1"></script>
+<script src="budget.js?v=1"></script>
+</body>
+</html>

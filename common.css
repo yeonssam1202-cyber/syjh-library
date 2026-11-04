@@ -1,0 +1,54 @@
+/* 회칙·세칙 / 예산·지출 / 근무표 화면이 함께 쓰는 스타일 */
+:root { --bg:#f3f2f2; --text:#201f1d; --muted:#6c6b69; --accent:#b68235; --accent-700:#7d5411; --line:#dcdad7;
+        --err:#a8321f; --ok:#2f6b3a; --warn:#9a5b00; --navy:#14305c; --head:#dde3f4; }
+* { box-sizing:border-box; margin:0; }
+body { background:var(--bg); color:var(--text); font:16px/1.65 "IBM Plex Sans KR","Malgun Gothic",-apple-system,sans-serif; padding:64px 16px 100px; }
+.wrap { max-width:1000px; margin:0 auto; }
+button { font:inherit; cursor:pointer; }
+button:disabled { opacity:.55; cursor:default; }
+.primary { background:var(--accent-700); color:#fff; border:0; border-radius:4px; padding:11px 18px; font-weight:600; }
+.ghost { background:#fff; border:1px solid var(--line); border-radius:4px; padding:10px 16px; }
+.danger { color:var(--err); }
+.linkbtn { background:none; border:0; color:var(--accent-700); text-decoration:underline; padding:4px 0; }
+.mark { font-size:14px; letter-spacing:.06em; color:var(--accent-700); }
+h1 { font-size:28px; font-weight:600; }
+.top { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+.notice { display:none; padding:11px 14px; border-radius:6px; margin-bottom:14px; font-size:15px; }
+.notice.err { display:block; background:#fbeae6; color:var(--err); }
+.notice.ok { display:block; background:#e8f3ea; color:var(--ok); }
+.panel { background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px; margin-bottom:14px; }
+.panel h2 { font-size:18px; margin-bottom:10px; color:var(--navy); }
+label.l { display:block; font-size:14px; color:var(--muted); margin:12px 0 4px; }
+input[type=text], input[type=number], input[type=date], input[type=time], select, textarea {
+  width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:4px; font:inherit; background:#fff; color:inherit; }
+textarea { min-height:100px; resize:vertical; }
+input:focus, select:focus, textarea:focus, button:focus-visible { outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent); border-color:var(--accent); }
+input[type=checkbox] { width:22px; height:22px; accent-color:var(--accent-700); }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+.grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 14px; }
+.hint { color:var(--muted); font-size:14px; margin-top:4px; }
+.badge { display:inline-block; font-size:13px; padding:2px 10px; border-radius:999px; background:#f1efec; color:var(--muted); }
+.badge.warn { background:#fbeae6; color:var(--err); }
+.badge.ok { background:#e8f3ea; color:var(--ok); }
+.badge.gold { background:#f6efe2; color:var(--accent-700); }
+.empty { text-align:center; color:var(--muted); padding:40px 12px; background:#fff; border:1px dashed var(--line); border-radius:8px; }
+.bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:12px 0; }
+.bar .sp { flex:1; }
+.tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+.chip { border:1px solid var(--line); background:#fff; border-radius:999px; padding:7px 16px; font-size:15px; color:var(--muted); }
+.chip[aria-pressed="true"] { background:var(--accent-700); border-color:var(--accent-700); color:#fff; }
+.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
+.stat { background:#fff; border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+.stat .n { font-size:24px; font-weight:600; font-variant-numeric:tabular-nums; }
+.stat .t { font-size:14px; color:var(--muted); }
+.stat.bad .n { color:var(--err); }
+dialog { border:1px solid var(--line); border-radius:8px; padding:0; width:min(620px, calc(100vw - 24px)); max-height:calc(100vh - 24px); color:var(--text); }
+dialog::backdrop { background:rgba(0,0,0,.4); }
+.dlg { padding:20px; }
+.dlg h3 { font-size:19px; margin-bottom:6px; }
+@media (max-width:640px) {
+  .grid2, .grid3 { grid-template-columns:1fr; }
+  h1 { font-size:24px; }
+}
+@page { size:A4; margin:16mm 14mm; }
+@media print { body { background:#fff; padding:0; } .noprint, #app-bar { display:none !important; } }

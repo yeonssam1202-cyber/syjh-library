@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>작은도서관 운영위원회 · 회원 승인</title>
-<script src="guard.js?v=4"></script>
+<script src="guard.js?v=6"></script>
 <style>
   :root { --bg:#f3f2f2; --text:#201f1d; --muted:#6c6b69; --accent:#b68235; --accent-700:#7d5411; --line:#dcdad7; --err:#a8321f; --ok:#2f6b3a; }
   * { box-sizing:border-box; margin:0; }
@@ -91,12 +91,12 @@
       }
       if (row.id === me.id) { var t = document.createElement("span"); t.style.color = "var(--muted)"; t.textContent = "내 계정"; wrap.appendChild(t); return wrap; }
       if (row.status !== "approved") btn("승인", "", function () { setField(row, { status: "approved" }, who(row) + " 님을 승인했어요."); });
-      if (row.status === "pending") btn("거절", "danger", function () { if (confirm(who(row) + " 님의 가입을 거절할까요?")) setField(row, { status: "rejected" }, "거절했어요."); });
-      if (row.status === "approved") btn("승인 취소", "ghost", function () { if (confirm(who(row) + " 님의 접속을 막을까요?")) setField(row, { status: "rejected" }, "접속을 막았어요."); });
+      if (row.status === "pending") btn("거절", "danger", async function () { if (await askBox(who(row) + " 님의 가입을 거절할까요?")) setField(row, { status: "rejected" }, "거절했어요."); });
+      if (row.status === "approved") btn("승인 취소", "ghost", async function () { if (await askBox(who(row) + " 님의 접속을 막을까요?")) setField(row, { status: "rejected" }, "접속을 막았어요."); });
       if (row.status === "rejected") btn("대기로 되돌리기", "ghost", function () { setField(row, { status: "pending" }, "대기 상태로 되돌렸어요."); });
       if (row.status === "approved") {
-        if (row.role === "admin") btn("관리자 해제", "ghost", function () { if (confirm(who(row) + " 님의 관리자 권한을 해제할까요?")) setField(row, { role: "member" }, "관리자 권한을 해제했어요."); });
-        else btn("관리자로 지정", "ghost", function () { if (confirm(who(row) + " 님을 관리자로 지정할까요? 관리자는 회원 승인과 자료 올리기를 할 수 있어요.")) setField(row, { role: "admin" }, "관리자로 지정했어요."); });
+        if (row.role === "admin") btn("관리자 해제", "ghost", async function () { if (await askBox(who(row) + " 님의 관리자 권한을 해제할까요?")) setField(row, { role: "member" }, "관리자 권한을 해제했어요."); });
+        else btn("관리자로 지정", "ghost", async function () { if (await askBox(who(row) + " 님을 관리자로 지정할까요? 관리자는 회원 승인과 자료 올리기를 할 수 있어요.")) setField(row, { role: "admin" }, "관리자로 지정했어요."); });
       }
       return wrap;
     }

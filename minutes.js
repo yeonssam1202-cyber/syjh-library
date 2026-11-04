@@ -61,6 +61,22 @@ window.whenAuthed.then(function (me) {
     return (s || '').split('\n').map(function (x) { return x.trim().replace(/^\d+[.)]\s*/, ''); }).filter(Boolean);
   }
 
+  // 확인·안내창: 브라우저 기본 팝업(confirm/alert)은 앱 안 브라우저 등에서 막혀 아무 반응이 없을 수 있어, 화면 안 창을 씁니다.
+  function ask(msg, okText, noText) {
+    return new Promise(function (done) {
+      var dlg = h('dialog'), box = h('div', { class: 'dlg' });
+      var finish = function (v) { dlg.close(); dlg.remove(); done(v); };
+      box.appendChild(h('div', { text: msg, style: 'white-space:pre-wrap;font-size:16px;line-height:1.6;margin-bottom:14px' }));
+      var bar = h('div', { class: 'bar', style: 'margin:0' }, h('span', { class: 'sp' }));
+      if (noText !== null) bar.appendChild(h('button', { class: 'ghost', type: 'button', text: noText || '취소', onclick: function () { finish(false); } }));
+      bar.appendChild(h('button', { class: 'primary', type: 'button', text: okText || '확인', onclick: function () { finish(true); } }));
+      box.appendChild(bar); dlg.appendChild(box);
+      dlg.addEventListener('cancel', function (e) { e.preventDefault(); finish(false); });
+      document.body.appendChild(dlg); dlg.showModal();
+    });
+  }
+  function say(msg) { return ask(msg, '확인', null); }
+
   // ---------- 이동 ----------
   function nav(search) { history.pushState(null, '', 'minutes.html' + (search || '')); route(); window.scrollTo(0, 0); }
   function link(search, props) {
@@ -217,7 +233,7 @@ window.whenAuthed.then(function (me) {
     async function onSave(startSigning) {
       if (!d.meeting_date) { notice('err', '회의 일시(날짜)를 입력해 주세요.'); return; }
       if (!(parseInt(d.seq, 10) >= 1)) { notice('err', '회의 차수를 입력해 주세요.'); return; }
-      if (startSigning && !confirm('서명을 받기 시작하면 내용을 고칠 수 없어요(서명이 없다면 초안으로 되돌릴 수는 있어요). 계속할까요?')) return;
+      if (startSigning && !(await ask('서명을 받기 시작하면 내용을 고칠 수 없어요(서명이 없다면 초안으로 되돌릴 수는 있어요). 계속할까요?', '서명 받기 시작'))) return;
       notice(); busy(true);
       try {
         sortAtt(d.attendees);
@@ -299,7 +315,7 @@ window.whenAuthed.then(function (me) {
   }
 
   async function removeMeeting(id, photos) {
-    if (!confirm('이 회의록을 삭제할까요? 서명과 사진도 함께 지워지고 되돌릴 수 없어요.')) return;
+    if (!(await ask('이 회의록을 삭제할까요? 서명과 사진도 함께 지워지고 되돌릴 수 없어요.', '삭제'))) return;
     try {
       if (photos && photos.length) await db.storage.from(BUCKET).remove(photos.map(function (p) { return p.path; }));
       var r = await db.from('meetings').delete().eq('id', id);
@@ -356,7 +372,7 @@ window.whenAuthed.then(function (me) {
     d.photos.forEach(function (p) {
       grid.appendChild(h('figure', null, h('img', { src: urls[p.path] || '', alt: '회의 사진' }),
         h('button', { type: 'button', text: '삭제', onclick: async function () {
-          if (!confirm('이 사진을 삭제할까요?')) return;
+          if (!(await ask('이 사진을 삭제할까요?', '삭제'))) return;
           await db.storage.from(BUCKET).remove([p.path]);
           var r = await db.from('meeting_photos').delete().eq('id', p.id);
           if (r.error) { fail(r.error); return; }
@@ -411,9 +427,9 @@ window.whenAuthed.then(function (me) {
     if (m.status === 'draft' && manage) acts.appendChild(h('button', { class: 'ghost', text: '이어서 쓰기', onclick: function () { nav('?id=' + m.id + '&edit'); } }));
     if (m.status === 'signing' && manage) {
       if (!m.meeting_signatures.length) acts.appendChild(h('button', { class: 'ghost', text: '초안으로 되돌리기', onclick: setStatus('draft', '초안으로 되돌렸어요. 다시 고칠 수 있어요.') }));
-      acts.appendChild(h('button', { class: 'ghost', text: '서명 마감', onclick: function () {
+      acts.appendChild(h('button', { class: 'ghost', text: '서명 마감', onclick: async function () {
         var left = c.present - m.meeting_signatures.length;
-        if (confirm((left > 0 ? '아직 서명하지 않은 위원이 ' + left + '명 있어요. ' : '') + '서명을 마감할까요? 마감하면 더는 서명할 수 없어요.')) setStatus('closed', '서명을 마감했어요.')();
+        if (await ask((left > 0 ? '아직 서명하지 않은 위원이 ' + left + '명 있어요. ' : '') + '서명을 마감할까요? 마감하면 더는 서명할 수 없어요.', '마감')) setStatus('closed', '서명을 마감했어요.')();
       } }));
     }
     acts.appendChild(h('button', { class: 'ghost', text: '인쇄 · PDF 저장', onclick: function () { window.print(); } }));
@@ -433,7 +449,7 @@ window.whenAuthed.then(function (me) {
         td.appendChild(h('img', { src: s.signature, alt: a.name + ' 서명', title: new Date(s.signed_at).toLocaleString('ko-KR') + ' 서명' }));
         if (me.role === 'admin' && m.status === 'signing')
           td.appendChild(h('button', { class: 'x noprint', type: 'button', text: '서명 지우기', onclick: async function () {
-            if (!confirm(a.name + ' 위원의 서명을 지울까요?')) return;
+            if (!(await ask(a.name + ' 위원의 서명을 지울까요?', '지우기'))) return;
             var r = await db.from('meeting_signatures').delete().eq('attendee_id', a.id);
             if (r.error) { fail(r.error); return; }
             await route();
@@ -540,14 +556,14 @@ window.whenAuthed.then(function (me) {
   $('sign-clear').onclick = padReset;
   $('sign-cancel').onclick = function () { $('sign-dlg').close(); };
   $('sign-ok').onclick = async function () {
-    if (strokes < 8) { alert('서명란에 이름을 직접 써 주세요.'); return; }
-    if (!$('sign-agree').checked) { alert('확인 문구에 체크해 주세요.'); return; }
+    if (strokes < 8) { await say('서명란에 이름을 직접 써 주세요.'); return; }
+    if (!$('sign-agree').checked) { await say('확인 문구에 체크해 주세요.'); return; }
     var btn = $('sign-ok'); btn.disabled = true;
     var r = await db.from('meeting_signatures').insert({
       attendee_id: signTarget.a.id, meeting_id: signTarget.m.id, signature: pad.toDataURL('image/png')
     });
     btn.disabled = false;
-    if (r.error) { alert(friendly(r.error)); return; }
+    if (r.error) { await say(friendly(r.error)); return; }
     $('sign-dlg').close();
     await route();
     notice('ok', '서명했어요. 고맙습니다.');

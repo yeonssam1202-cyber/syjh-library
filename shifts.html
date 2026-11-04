@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>근무표 · 작은도서관 운영위원회</title>
+<script src="guard.js?v=6"></script>
+<link rel="stylesheet" href="common.css?v=1">
+<style>
+  .weekbar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .weekbar .w { min-width:170px; text-align:center; font-weight:600; font-size:17px; }
+  table.grid { width:100%; border-collapse:collapse; table-layout:fixed; background:#fff; border:1px solid var(--line); }
+  table.grid th { padding:8px 4px; font-size:14px; border:1px solid var(--line); background:#faf9f7; }
+  table.grid th.today { background:#f6efe2; color:var(--accent-700); }
+  table.grid th.slot { width:92px; font-weight:600; white-space:nowrap; }
+  table.grid td { border:1px solid var(--line); vertical-align:top; padding:0; height:84px; }
+  .cell { display:block; width:100%; height:100%; min-height:84px; text-align:left; background:#fff; border:0; border-left:4px solid transparent; padding:6px 8px; font-size:14px; line-height:1.45; }
+  .cell:hover { background:#fbf8f2; }
+  .cell.short { border-left-color:var(--err); }
+  .cell.ok { border-left-color:var(--ok); }
+  .cell.closed { background:repeating-linear-gradient(135deg,#f6f5f3,#f6f5f3 6px,#ecebe8 6px,#ecebe8 12px); color:var(--muted); cursor:default; text-align:center; padding-top:28px; }
+  .cell .cnt { display:block; font-size:12px; color:var(--muted); margin-bottom:2px; }
+  .cell .me { font-weight:700; color:var(--accent-700); }
+  .cell.today-col { box-shadow:inset 0 0 0 2px #f1dfba; }
+  .days-m { display:none; }
+  .dcard { background:#fff; border:1px solid var(--line); border-radius:8px; margin-bottom:10px; overflow:hidden; }
+  .dcard.today { border-color:var(--accent); }
+  .dcard .dh { padding:8px 14px; background:#faf9f7; font-weight:600; display:flex; justify-content:space-between; }
+  .dcard .srow { display:block; width:100%; text-align:left; background:#fff; border:0; border-top:1px solid var(--line); border-left:4px solid transparent; padding:10px 14px; font-size:15px; }
+  .dcard .srow.short { border-left-color:var(--err); }
+  .dcard .srow.ok { border-left-color:var(--ok); }
+  .dcard .srow .sl { color:var(--muted); font-size:13px; display:block; }
+  .dcard .closedrow { padding:10px 14px; color:var(--muted); background:repeating-linear-gradient(135deg,#f6f5f3,#f6f5f3 6px,#ecebe8 6px,#ecebe8 12px); }
+  .counts { display:flex; flex-wrap:wrap; gap:6px; }
+  .legend { color:var(--muted); font-size:14px; margin:8px 0 14px; }
+  .shiftrow { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 0; border-top:1px solid var(--line); }
+  .shiftrow:first-of-type { border-top:0; }
+  .shiftrow .nt { color:var(--muted); font-size:13px; }
+  .daychk { display:flex; flex-wrap:wrap; gap:10px; margin-top:4px; }
+  .daychk label { display:flex; gap:6px; align-items:center; font-size:15px; }
+  textarea#s-slots { min-height:90px; }
+  @media (max-width:760px) { table.grid { display:none; } .days-m { display:block; } .weekbar .w { min-width:140px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="notice" class="notice noprint" role="alert"></div>
+  <div id="app"></div>
+</div>
+
+<dialog id="cell-dlg">
+  <div class="dlg">
+    <h3 id="c-title"></h3>
+    <div class="hint" id="c-sub"></div>
+    <div id="c-list" style="margin:8px 0"></div>
+    <div class="bar" style="margin:6px 0">
+      <button class="primary" type="button" id="c-me">내가 근무할게요</button>
+    </div>
+    <label class="l" for="c-who">다른 위원 넣기</label>
+    <div class="grid2">
+      <select id="c-who"></select>
+      <input type="text" id="c-note" maxlength="200" placeholder="메모 (선택)">
+    </div>
+    <div class="bar"><button class="ghost" type="button" id="c-add">위원 넣기</button></div>
+    <label class="l" style="display:flex;gap:8px;align-items:center;color:var(--text);font-size:15px"><input type="checkbox" id="c-repeat"> 4주 동안 매주 같은 요일·시간에 반복</label>
+    <div class="bar" style="margin-bottom:0"><span class="sp"></span><button class="ghost" type="button" id="c-close">닫기</button></div>
+  </div>
+</dialog>
+
+<dialog id="set-dlg">
+  <form class="dlg" id="set-form" method="dialog">
+    <h3>근무표 설정</h3>
+    <label class="l" for="s-slots">시간대 (한 줄에 하나)</label>
+    <textarea id="s-slots" placeholder="10:00-13:00&#10;13:00-16:00"></textarea>
+    <label class="l">휴관 요일</label>
+    <div class="daychk" id="s-days"></div>
+    <label class="l" for="s-req">시간대마다 필요한 인원</label>
+    <input type="number" id="s-req" min="1" max="20" step="1" required>
+    <div class="bar" style="margin-bottom:0"><span class="sp"></span>
+      <button class="ghost" type="button" id="s-cancel">취소</button><button class="primary" type="submit" id="s-save">저장</button></div>
+  </form>
+</dialog>
+
+<script src="ui.js?v=1"></script>
+<script src="shifts.js?v=1"></script>
+</body>
+</html>

@@ -24,7 +24,7 @@
     bar.id = "app-bar";
     bar.style.cssText = "position:fixed;top:10px;right:14px;max-width:calc(100vw - 28px);z-index:100000;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;" +
       "background:#fff;border:1px solid #ddd;border-radius:18px;padding:6px 8px 6px 14px;font:13px/1.2 -apple-system,'Malgun Gothic',sans-serif;color:#201f1d;box-shadow:0 1px 6px rgba(0,0,0,.08)";
-    var links = [["홈", "app.html"], ["공지", "notices.html"], ["업무 목록", "tasks.html"], ["회의록", "minutes.html"], ["예산·지출", "budget.html"],
+    var links = [["홈", "app.html"], ["공지", "notices.html"], ["업무 목록", "tasks.html"], ["회의록", "minutes.html"], ["예산·지출", "budget.html"], ["감사 보고서", "audit.html"],
       ["근무표", "shifts.html"], ["회칙·세칙", "rules.html"], ["자료실", "documents.html"]];
     if (p.role === "admin") links.push(["회원 승인", "members.html"]);
     var box = document.createElement("div");

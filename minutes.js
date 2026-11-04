@@ -657,11 +657,14 @@ window.whenAuthed.then(function (me) {
           var x = e.x, long = x.field === 'agenda' || x.field === 'summary' || x.field === 'result';
           it.appendChild(h('div', { class: 'sh', text: fmtDT(x.changed_at) + ' · ' + (x.changed_by_name || '알 수 없음') + ' · ' + FIELD[x.field] + ' 수정' +
             (x.suggested_by_name ? ' (제안: ' + x.suggested_by_name + ')' : '') }));
+          var from = x.suggestion_id && sugs.filter(function (z) { return z.id === x.suggestion_id; })[0];
+          if (from && from.note) it.appendChild(h('div', { class: 'hint', text: '이유: ' + from.note }));
           it.appendChild(long ? diffView(x.old_text, x.new_text) : h('div', { class: 'hint', text: (x.old_text || '(없음)') + ' → ' + (x.new_text || '(없음)') }));
         } else {
           var s = e.x;
           it.appendChild(h('div', { class: 'sh', text: fmtDT(s.decided_at || s.created_at) + ' · ' + s.proposed_by_name + '의 ' + FIELD[s.field] + ' 제안 · ' +
             (s.status === 'rejected' ? '거절됨 (' + s.decided_by_name + ')' : '제안자가 취소') }));
+          if (s.note) it.appendChild(h('div', { class: 'hint', text: '이유: ' + s.note }));
           it.appendChild(diffView(s.base_text, s.new_text));
         }
         histPanel.appendChild(it);

@@ -32,6 +32,10 @@
   .msg.ok { display:block; background:#e8f3ea; color:var(--ok); }
   .empty { color:var(--muted); padding:12px 0; }
   .hide { display:none; }
+  select { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:4px; background:#fff; }
+  table.perm th, table.perm td { text-align:center; white-space:nowrap; }
+  table.perm th:first-child, table.perm td:first-child { text-align:left; white-space:normal; }
+  table.perm input { width:22px; height:22px; accent-color:var(--accent-700); }
   @media (max-width:640px) { th.hide-sm, td.hide-sm { display:none; } }
 </style>
 </head>
@@ -52,9 +56,15 @@
   <section class="card hide" id="box-all">
     <h2>전체 회원</h2>
     <table>
-      <thead><tr><th>이름</th><th class="hide-sm">이메일</th><th class="hide-sm">가입일</th><th>상태</th><th></th></tr></thead>
+      <thead><tr><th>이름</th><th>직책</th><th class="hide-sm">이메일</th><th class="hide-sm">가입일</th><th>상태</th><th></th></tr></thead>
       <tbody id="rows-all"></tbody>
     </table>
+  </section>
+
+  <section class="card hide" id="box-perm">
+    <h2>직책별 이용 권한</h2>
+    <p class="sub" style="margin-bottom:10px">위원의 직책(위 표에서 고르세요)에 따라 할 수 있는 일을 정해요. 체크하면 바로 저장돼요. 관리자는 직책과 상관없이 모든 일을 할 수 있어요. 보기와 서명은 승인된 위원 모두 할 수 있어요.</p>
+    <div style="overflow-x:auto"><table class="perm" id="perm-table"></table></div>
   </section>
 </main>
 
@@ -74,6 +84,41 @@
     document.getElementById("box-pending").classList.remove("hide");
     document.getElementById("box-all").classList.remove("hide");
     var client = Auth.client;
+    var POS = ["위원장", "부위원장", "총무", "감사", "운영위원"];
+    var PERMS = [["minutes_write", "회의록 쓰기"], ["expense_write", "지출 기록"], ["budget_edit", "예산 항목 편집"],
+      ["rules_edit", "회칙·세칙 등록·삭제"], ["shifts_settings", "근무표 설정"], ["docs_upload", "자료실 올리기·삭제"]];
+
+    async function loadPerms() {
+      var r = await client.from("role_permissions").select("position,perm,allowed");
+      var tbl = document.getElementById("perm-table");
+      if (r.error) { tbl.textContent = "권한 표를 불러오지 못했어요. 관리자가 supabase-roles.sql 을 실행했는지 확인해 주세요."; document.getElementById("box-perm").classList.remove("hide"); return; }
+      var on = {};
+      r.data.forEach(function (x) { on[x.position + "|" + x.perm] = x.allowed; });
+      tbl.textContent = "";
+      var th0 = document.createElement("th"); th0.textContent = "할 수 있는 일";
+      var head = document.createElement("tr"); head.appendChild(th0);
+      POS.forEach(function (p) { var th = document.createElement("th"); th.textContent = p; head.appendChild(th); });
+      var thead = document.createElement("thead"); thead.appendChild(head); tbl.appendChild(thead);
+      var tb = document.createElement("tbody");
+      PERMS.forEach(function (pm) {
+        var tr = document.createElement("tr"); tr.appendChild(cell(pm[1]));
+        POS.forEach(function (p) {
+          var td = document.createElement("td"), cb = document.createElement("input");
+          cb.type = "checkbox"; cb.checked = !!on[p + "|" + pm[0]]; cb.setAttribute("aria-label", p + " " + pm[1]);
+          cb.onchange = async function () {
+            clearMsg(); cb.disabled = true;
+            var u = await client.from("role_permissions").upsert({ position: p, perm: pm[0], allowed: cb.checked }, { onConflict: "position,perm" });
+            cb.disabled = false;
+            if (u.error) { cb.checked = !cb.checked; show("바꾸지 못했어요: " + u.error.message); return; }
+            show(p + " · " + pm[1] + (cb.checked ? " 허용했어요." : " 막았어요."), "ok");
+          };
+          td.appendChild(cb); tr.appendChild(td);
+        });
+        tb.appendChild(tr);
+      });
+      tbl.appendChild(tb);
+      document.getElementById("box-perm").classList.remove("hide");
+    }
 
     async function setField(row, patch, okText) {
       clearMsg();
@@ -102,7 +147,9 @@
     }
 
     async function load() {
-      var r = await client.from("profiles").select("id,name,email,status,role,created_at").order("created_at", { ascending: false });
+      var r = await client.from("profiles").select("id,name,email,status,role,position,created_at").order("created_at", { ascending: false });
+      var hasPos = !r.error;
+      if (r.error) r = await client.from("profiles").select("id,name,email,status,role,created_at").order("created_at", { ascending: false });
       if (r.error) { show("목록을 불러오지 못했어요: " + r.error.message); return; }
       var pend = r.data.filter(function (x) { return x.status === "pending"; });
       var tp = document.getElementById("rows-pending"), ta = document.getElementById("rows-all");
@@ -118,6 +165,15 @@
       r.data.forEach(function (row) {
         var tr = document.createElement("tr");
         tr.appendChild(cell((row.name || "이름 없음") + (row.role === "admin" ? " · 관리자" : "")));
+        var tpos = document.createElement("td");
+        if (hasPos && row.status === "approved") {
+          var sel = document.createElement("select"); sel.setAttribute("aria-label", (row.name || "") + " 직책");
+          POS.forEach(function (p) { var o = document.createElement("option"); o.value = p; o.textContent = p; sel.appendChild(o); });
+          sel.value = row.position || "운영위원";
+          sel.onchange = function () { setField(row, { position: sel.value }, (row.name || "위원") + " 님의 직책을 " + sel.value + "(으)로 바꿨어요."); };
+          tpos.appendChild(sel);
+        }
+        tr.appendChild(tpos);
         tr.appendChild(cell(row.email, "hide-sm"));
         tr.appendChild(cell(String(row.created_at || "").slice(0, 10), "hide-sm"));
         var ts = document.createElement("td"); ts.appendChild(badge(row.status)); tr.appendChild(ts);
@@ -125,6 +181,7 @@
       });
     }
     load();
+    loadPerms();
   });
 })();
 </script>

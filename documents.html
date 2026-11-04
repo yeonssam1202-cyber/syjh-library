@@ -81,7 +81,7 @@
 
   window.whenAuthed.then(function (me) {
     var client = Auth.client;
-    var isAdmin = me.role === "admin";
+    var isAdmin = me.can("docs_upload");
     if (isAdmin) document.getElementById("admin-box").classList.remove("hide");
 
     async function load() {

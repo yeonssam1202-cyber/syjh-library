@@ -2,7 +2,7 @@
 window.whenAuthed.then(function (me) {
   'use strict';
   var db = Auth.client, U = UI, h = U.h, $ = U.$, app = $('app');
-  var isAdmin = me.role === 'admin';
+  var isAdmin = me.role === 'admin', canItems = me.can('budget_edit'), canSpend = me.can('expense_write');
   var BUCKET = 'receipts', FEE_PER_PERSON = 5000, FEE_MAX_PER_MONTH = 2;
   var SOURCES = ['공동체 활성화 지원비', '외부 지원금', '기타'];
   var DEFAULT_ITEMS = [['도서 구입비', false], ['도서관 물품비', false], ['홍보 및 개관비', false], ['공모전·행사비', false], ['회의운영비(회의비·다과비)', true]];
@@ -61,8 +61,8 @@ window.whenAuthed.then(function (me) {
           h('button', { class: 'ghost', 'aria-label': '이전 해', text: '‹', onclick: function () { year--; reload(); } }),
           h('span', { class: 'y', text: year + ' 회계연도' }),
           h('button', { class: 'ghost', 'aria-label': '다음 해', text: '›', onclick: function () { year++; reload(); } })),
-        h('button', { class: 'primary', text: '+ 지출 기록', onclick: function () { openExp(null); } }),
-        isAdmin ? h('button', { class: 'ghost', text: '예산 항목 편집', onclick: openItems }) : null)));
+        canSpend ? h('button', { class: 'primary', text: '+ 지출 기록', onclick: function () { openExp(null); } }) : null,
+        canItems ? h('button', { class: 'ghost', text: '예산 항목 편집', onclick: openItems }) : null)));
 
     app.appendChild(h('div', { class: 'note noprint', text: '회계연도는 1월 1일~12월 31일이고, 쓰고 남은 지원금은 다음 해로 넘길 수 없어요. 공사·공용비품(서가·탁자·PC 등)은 관리주체가 집행하니 여기에 기록하지 않아요.' }));
 
@@ -74,7 +74,7 @@ window.whenAuthed.then(function (me) {
     // 항목별 집행
     var ip = h('div', { class: 'panel' }, h('h2', { text: '항목별 집행' }));
     if (!items.length) {
-      ip.appendChild(h('div', { class: 'hint', text: isAdmin ? '아직 예산 항목이 없어요. "예산 항목 편집"에서 기본 항목을 넣어 주세요.' : '아직 예산 항목이 없어요. 관리자가 만들면 여기에 나와요.' }));
+      ip.appendChild(h('div', { class: 'hint', text: canItems ? '아직 예산 항목이 없어요. "예산 항목 편집"에서 기본 항목을 넣어 주세요.' : '아직 예산 항목이 없어요. 관리자가 만들면 여기에 나와요.' }));
     }
     var nowYm = U.today().slice(0, 7);
     items.forEach(function (it) {
@@ -169,7 +169,7 @@ window.whenAuthed.then(function (me) {
   }
 
   async function openExp(e) {
-    if (!items.length) { U.notice('err', '먼저 예산 항목이 있어야 해요. ' + (isAdmin ? '"예산 항목 편집"에서 만들어 주세요.' : '관리자에게 예산 항목 만들기를 요청해 주세요.')); return; }
+    if (!items.length) { U.notice('err', '먼저 예산 항목이 있어야 해요. ' + (canItems ? '"예산 항목 편집"에서 만들어 주세요.' : '관리자에게 예산 항목 만들기를 요청해 주세요.')); return; }
     editing = e || null; pending = []; existing = e ? e.expense_receipts.slice() : [];
     $('exp-title').textContent = e ? '지출 편집' : '지출 기록';
     var sel = $('e-item'); sel.textContent = '';

@@ -2,7 +2,7 @@
 window.whenAuthed.then(function (me) {
   'use strict';
   var db = Auth.client, U = UI, h = U.h, $ = U.$, app = $('app');
-  var isAdmin = me.role === 'admin';
+  var isAdmin = me.can('rules_edit');   // 회칙·세칙 등록·삭제 권한
   var versions = [];          // 최신순
   var kind = '회칙', pickedId = null, term = '';
 

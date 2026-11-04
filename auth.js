@@ -12,8 +12,17 @@
     var s = await client.auth.getSession();
     var user = s.data.session && s.data.session.user;
     if (!user) return null;
-    var r = await client.from("profiles").select("name,email,status,role").eq("id", user.id).maybeSingle();
-    return r.data ? Object.assign({ id: user.id }, r.data) : { id: user.id, status: "pending", name: "", email: user.email };
+    var r = await client.from("profiles").select("name,email,status,role,position").eq("id", user.id).maybeSingle();
+    if (r.error) r = await client.from("profiles").select("name,email,status,role").eq("id", user.id).maybeSingle();
+    if (!r.data) return { id: user.id, status: "pending", name: "", email: user.email, can: function () { return false; } };
+    var p = Object.assign({ id: user.id, position: "운영위원" }, r.data), perms = {};
+    // 직책별 이용 권한(관리자가 정함). 관리자는 모든 권한을 가집니다. 화면 표시용이며 실제 막는 것은 DB 규칙입니다.
+    if (p.status === "approved") {
+      var pr = await client.from("role_permissions").select("perm,allowed").eq("position", p.position);
+      if (!pr.error && pr.data) pr.data.forEach(function (x) { perms[x.perm] = x.allowed; });
+    }
+    p.can = function (perm) { return p.role === "admin" || perms[perm] === true; };
+    return p;
   }
 
   window.Auth = { configured: configured, client: client, getProfile: getProfile };

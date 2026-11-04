@@ -4,7 +4,7 @@
   function askBox(msg, okText, noText) {
     return new Promise(function (done) {
       var dlg = document.createElement('dialog');
-      dlg.style.cssText = 'border:1px solid #dcdad7;border-radius:8px;padding:20px;width:min(420px,calc(100vw - 24px));color:#201f1d;font:16px/1.6 "Malgun Gothic",-apple-system,sans-serif';
+      dlg.style.cssText = 'margin:auto;border:1px solid #dcdad7;border-radius:8px;padding:20px;width:min(420px,calc(100vw - 24px));color:#201f1d;font:16px/1.6 "Malgun Gothic",-apple-system,sans-serif';
       var p = document.createElement('div');
       p.textContent = msg; p.style.cssText = 'white-space:pre-wrap;margin-bottom:16px';
       var bar = document.createElement('div');

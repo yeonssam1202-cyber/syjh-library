@@ -58,7 +58,7 @@ window.whenAuthed.then(function (me) {
           h('span', { class: 'w', text: weekLabel(weekStart) }),
           h('button', { class: 'ghost', 'aria-label': '다음 주', text: '›', onclick: function () { weekStart = addDays(weekStart, 7); refresh(); } }),
           h('button', { class: 'ghost', text: '오늘', onclick: function () { weekStart = mondayOf(new Date()); refresh(); } })),
-        isAdmin ? h('button', { class: 'ghost', text: '설정', onclick: openSettings }) : null)));
+        me.can('shifts_settings') ? h('button', { class: 'ghost', text: '설정', onclick: openSettings }) : null)));
 
     app.appendChild(h('div', { class: 'legend noprint', text: '칸을 누르면 근무자를 보고 넣고 뺄 수 있어요. 빨간 줄은 필요 인원(' + settings.required + '명)보다 적은 시간이에요. 진한 갈색 이름이 나예요.' }));
 

@@ -101,9 +101,10 @@ window.whenAuthed.then(function (me) {
   // ---------- 데이터 ----------
   async function loadMembers() {
     if (members.length) return;
-    var r = await db.from('profiles').select('id,name,email').eq('status', 'approved').order('name');
+    var r = await db.from('profiles').select('id,name,email,position').eq('status', 'approved').order('name');
+    if (r.error) r = await db.from('profiles').select('id,name,email').eq('status', 'approved').order('name');
     if (r.error) throw r.error;
-    members = r.data.map(function (x) { return { id: x.id, name: x.name || x.email }; });
+    members = r.data.map(function (x) { return { id: x.id, name: x.name || x.email, position: x.position }; });
   }
   async function loadOne(id) {
     var r = await db.from('meetings').select('*, meeting_attendees(*), meeting_signatures(*), meeting_photos(*)').eq('id', id).maybeSingle();
@@ -128,7 +129,7 @@ window.whenAuthed.then(function (me) {
     app.textContent = '';
     app.appendChild(h('div', { class: 'top' },
       h('div', null, h('div', { class: 'mark', text: '작은도서관 운영위원회' }), h('h1', { text: '회의록' })),
-      h('button', { class: 'primary', text: '+ 회의록 쓰기', onclick: function () { nav('?new'); } })));
+      me.can('minutes_write') ? h('button', { class: 'primary', text: '+ 회의록 쓰기', onclick: function () { nav('?new'); } }) : null));
     var list = h('div', { class: 'list' });
     if (!r.data.length) list.appendChild(h('div', { class: 'empty', text: '아직 회의록이 없어요. 첫 회의록을 남겨 보세요.' }));
     r.data.forEach(function (m) {
@@ -154,7 +155,7 @@ window.whenAuthed.then(function (me) {
     var d = {
       id: null, seq: (prev ? prev.seq : 0) + 1, kind: '정기회의', meeting_date: today(), start_time: '10:00', end_time: '12:00',
       place: prev ? prev.place : '', author_name: me.name || '', observers: 0, agenda: '', summary: '', result: '', photos: [],
-      attendees: members.map(function (m) { return { user_id: m.id, name: m.name, position: pos[m.id] || '운영위원', attended: true }; })
+      attendees: members.map(function (m) { return { user_id: m.id, name: m.name, position: m.position || pos[m.id] || '운영위원', attended: true }; })
     };
     sortAtt(d.attendees);
     return d;
@@ -556,7 +557,7 @@ window.whenAuthed.then(function (me) {
   $('sign-clear').onclick = padReset;
   $('sign-cancel').onclick = function () { $('sign-dlg').close(); };
   $('sign-ok').onclick = async function () {
-    if (strokes < 8) { await say('서명란에 이름을 직접 써 주세요.'); return; }
+    if (strokes < 3) { await say('서명란에 이름을 직접 써 주세요.'); return; }
     if (!$('sign-agree').checked) { await say('확인 문구에 체크해 주세요.'); return; }
     var btn = $('sign-ok'); btn.disabled = true;
     var r = await db.from('meeting_signatures').insert({

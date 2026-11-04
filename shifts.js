@@ -21,7 +21,7 @@ window.whenAuthed.then(function (me) {
   }
   function at(date, slot) { var k = U.ymd(date); return shifts.filter(function (s) { return s.shift_date === k && s.slot === slot; }); }
   var isVol = !!me.isVolunteer, canApprove = me.can('shifts_approve'), requests = [], history = [], histLimit = 30;
-  function canRemove(s) { return canApprove || (!isVol && (s.created_by === me.id || s.user_id === me.id)); }
+  function canRemove(s) { return canApprove || (!isVol && s.user_id === me.id); }   // 임원·관리자·담당자는 모두, 일반 위원은 본인 근무만
   function pendingFor(s) { return requests.filter(function (r) { return r.shift_id === s.id && r.status === 'pending'; })[0]; }
 
   // ---------- 데이터 ----------
@@ -68,7 +68,7 @@ window.whenAuthed.then(function (me) {
 
     app.appendChild(h('div', { class: 'legend noprint', text: (isVol
       ? '칸을 눌러 근무를 신청하세요. 신청한 근무를 바꾸거나 취소하려면 "변경 요청"을 올리고, 임원·담당자·관리자의 승인을 기다려 주세요. '
-      : '칸을 누르면 근무자를 보고 넣고 뺄 수 있어요. ') + '빨간 줄은 필요 인원(' + settings.required + '명)보다 적은 시간이에요. 진한 갈색 이름이 나예요.' }));
+      : (canApprove ? '칸을 누르면 근무자를 보고 넣고 뺄 수 있어요. ' : '칸을 누르면 근무를 신청하거나 내 근무를 뺄 수 있어요. 다른 위원이 이미 들어간 근무를 바꾸는 건 임원·관리자가 해요. ')) + '빨간 줄은 필요 인원(' + settings.required + '명)보다 적은 시간이에요. 진한 갈색 이름이 나예요.' }));
 
     // 데스크톱 표
     var head = h('tr', null, h('th', { class: 'slot', text: '' }), dates.map(function (d, i) {

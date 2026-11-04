@@ -45,7 +45,7 @@ create index if not exists audit_reports_year_idx on public.audit_reports(fiscal
 alter table public.audit_reports enable row level security;
 
 create or replace function public.audit_report_hash(r public.audit_reports) returns text
-language sql immutable as $$
+language sql immutable set search_path = public as $$
   select encode(sha256(convert_to(concat_ws('|', r.fiscal_year, r.period_start, r.period_end, r.audit_date, r.place, r.scope, r.observers,
     r.budget_snapshot::text, r.expense_snapshot::text, r.checks::text, r.opinion, r.summary, r.recommendations, r.created_by_name), 'UTF8')), 'hex');
 $$;

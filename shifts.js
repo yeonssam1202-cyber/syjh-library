@@ -158,7 +158,7 @@ window.whenAuthed.then(function (me) {
       case 'apply': return who === subj ? subj + ' 님이 ' + when + ' 근무를 신청' : who + ' 님이 ' + subj + ' 님을 ' + when + ' 근무에 넣음';
       case 'remove': return e.request_id
         ? subj + ' 님의 ' + when + ' 근무 취소 (요청 승인: ' + who + ', 요청자 ' + e.requested_by_name + ')'
-        : who + ' 님이 ' + subj + ' 님의 ' + when + ' 근무를 뺌';
+        : (who === subj ? subj + ' 님이 ' + when + ' 근무를 뺌' : who + ' 님이 ' + subj + ' 님의 ' + when + ' 근무를 뺌');
       case 'move': return e.request_id
         ? subj + ' 님의 근무 ' + when + ' → ' + fmtShort(e.new_date) + ' ' + e.new_slot + ' (요청 승인: ' + who + ')'
         : who + ' 님이 ' + subj + ' 님의 근무를 ' + when + ' → ' + fmtShort(e.new_date) + ' ' + e.new_slot + ' 로 옮김';

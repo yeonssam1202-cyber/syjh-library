@@ -66,7 +66,7 @@
     try {
       await load(base + "config.js");
       await load("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js");
-      await load(base + "auth.js");
+      await load(base + "auth.js?v=2");
       await load(base + "dialogs.js?v=1");
       var p = Auth.configured ? await Auth.getProfile() : null;
       if (!p || p.status !== "approved") { location.replace(loginUrl); return; }

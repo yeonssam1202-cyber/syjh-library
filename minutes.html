@@ -96,6 +96,21 @@
   .agree { display:flex; align-items:flex-start; gap:8px; margin:10px 0; font-size:15px; }
   .agree input { width:22px; height:22px; accent-color:var(--accent-700); flex:none; margin-top:2px; }
 
+  /* 검토 완료 · 수정 제안 · 수정 이력 */
+  .rv { display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; padding:8px 0; border-top:1px solid var(--line); }
+  .rv .nm { min-width:140px; font-weight:600; }
+  .rv .rvok { color:var(--ok); font-size:15px; }
+  .rv .rvok .badge { margin-left:6px; }
+  .rv .wait { color:var(--muted); font-size:14px; }
+  .rv button { margin-left:auto; }
+  .sug, .hrow { border-top:1px solid var(--line); padding:10px 0; }
+  .sh { font-weight:600; font-size:15px; margin-bottom:4px; }
+  .diff { border:1px solid var(--line); border-radius:6px; overflow:hidden; font-size:14px; line-height:1.5; }
+  .diff .dl { white-space:pre-wrap; word-break:break-word; padding:1px 8px; }
+  .diff .dl.add { background:#e8f3ea; color:#1f4f2a; }
+  .diff .dl.del { background:#fbeae6; color:var(--err); text-decoration:line-through; }
+  .sumhead { cursor:pointer; font-weight:600; color:var(--navy); }
+  details.panel[open] > .sumhead { margin-bottom:8px; }
   table.f.narrow { display:none; }
   @media (max-width:640px) {
     table.f.wide { display:none; }
@@ -150,6 +165,6 @@
   </div>
 </dialog>
 
-<script src="minutes.js?v=1"></script>
+<script src="minutes.js?v=2"></script>
 </body>
 </html>

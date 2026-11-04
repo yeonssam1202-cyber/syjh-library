@@ -107,7 +107,7 @@ window.whenAuthed.then(function (me) {
     members = r.data.map(function (x) { return { id: x.id, name: x.name || x.email, position: x.position }; });
   }
   async function loadOne(id) {
-    var r = await db.from('meetings').select('*, meeting_attendees(*), meeting_signatures(*), meeting_photos(*)').eq('id', id).maybeSingle();
+    var r = await db.from('meetings').select('*, meeting_attendees(*), meeting_signatures(*), meeting_photos(*), meeting_reviews(*), meeting_suggestions(*), meeting_changes(*)').eq('id', id).maybeSingle();
     if (r.error) throw r.error;
     return r.data;
   }
@@ -122,7 +122,7 @@ window.whenAuthed.then(function (me) {
   // ---------- 목록 ----------
   async function showList() {
     var r = await db.from('meetings')
-      .select('id,seq,kind,meeting_date,start_time,end_time,place,status,author_name,meeting_attendees(id,attended),meeting_signatures(attendee_id)')
+      .select('id,seq,kind,meeting_date,start_time,end_time,place,status,author_name,meeting_attendees(id,attended),meeting_signatures(attendee_id),meeting_reviews(attendee_id)')
       .order('meeting_date', { ascending: false }).order('seq', { ascending: false });
     if (r.error) throw r.error;
     document.title = '회의록 · 작은도서관 운영위원회';
@@ -136,6 +136,7 @@ window.whenAuthed.then(function (me) {
       var present = m.meeting_attendees.filter(function (a) { return a.attended; }).length;
       var badges = h('div', { class: 'badges' }, h('span', { class: 'badge ' + m.status, text: STATUS[m.status] }));
       if (m.status !== 'draft') badges.appendChild(h('span', { class: 'badge', text: '서명 ' + m.meeting_signatures.length + '/' + present + '명' }));
+      else if (present) badges.appendChild(h('span', { class: 'badge', text: '검토 ' + m.meeting_reviews.length + '/' + present + '명' }));
       list.appendChild(link('?id=' + m.id, { class: 'card' },
         h('div', { class: 't', text: '제' + m.seq + '차 ' + m.kind }),
         h('div', { class: 's', text: when(m) + (m.place ? ' · ' + m.place : '') + (m.author_name ? ' · 작성 ' + m.author_name : '') }),
@@ -162,7 +163,7 @@ window.whenAuthed.then(function (me) {
   }
   function draftFrom(m) {
     var att = m.meeting_attendees.slice().sort(function (a, b) { return a.sort_order - b.sort_order; })
-      .map(function (a) { return { user_id: a.user_id, name: a.name, position: a.position, attended: a.attended }; });
+      .map(function (a) { return { id: a.id, user_id: a.user_id, name: a.name, position: a.position, attended: a.attended }; });
     return {
       id: m.id, seq: m.seq, kind: m.kind, meeting_date: m.meeting_date, start_time: fmtTime(m.start_time), end_time: fmtTime(m.end_time),
       place: m.place, author_name: m.author_name, observers: m.observers, agenda: m.agenda, summary: m.summary, result: m.result,
@@ -226,25 +227,22 @@ window.whenAuthed.then(function (me) {
     renderAtt();
 
     var saveBtn = h('button', { class: 'ghost', text: '저장' });
-    var signBtn = h('button', { class: 'primary', text: '저장하고 서명 받기 시작' });
+    var signBtn = h('button', { class: 'primary', text: '저장하고 검토 받기' });
     function busy(b) { saveBtn.disabled = signBtn.disabled = b; }
     saveBtn.onclick = function () { onSave(false); };
     signBtn.onclick = function () { onSave(true); };
 
-    async function onSave(startSigning) {
+    async function onSave(toReview) {
       if (!d.meeting_date) { notice('err', '회의 일시(날짜)를 입력해 주세요.'); return; }
       if (!(parseInt(d.seq, 10) >= 1)) { notice('err', '회의 차수를 입력해 주세요.'); return; }
-      if (startSigning && !(await ask('서명을 받기 시작하면 내용을 고칠 수 없어요(서명이 없다면 초안으로 되돌릴 수는 있어요). 계속할까요?', '서명 받기 시작'))) return;
       notice(); busy(true);
       try {
         sortAtt(d.attendees);
         var id = await persist(d);
-        if (startSigning) {
-          var u = await db.from('meetings').update({ status: 'signing' }).eq('id', id);
-          if (u.error) throw u.error;
+        if (toReview) {
           history.replaceState(null, '', 'minutes.html?id=' + id);
           await route();
-          notice('ok', '서명 받기를 시작했어요. 위원들이 로그인해서 서명하면 돼요.');
+          notice('ok', '저장했어요. 위원들이 내용을 읽고 "검토 완료"를 누르면, 모두 끝난 뒤 "서명 받기 시작"을 누를 수 있어요.');
         } else {
           history.replaceState(null, '', 'minutes.html?id=' + id + '&edit');
           await route();
@@ -303,14 +301,27 @@ window.whenAuthed.then(function (me) {
       if (c.error) throw c.error;
       id = d.id = c.data.id;
     }
-    var del = await db.from('meeting_attendees').delete().eq('meeting_id', id);
-    if (del.error) throw del.error;
-    var rows = d.attendees.map(function (a, i) {
-      return { meeting_id: id, user_id: a.user_id || null, name: a.name, position: a.position, attended: a.attended, sort_order: i };
-    });
-    if (rows.length) {
-      var ins = await db.from('meeting_attendees').insert(rows);
-      if (ins.error) throw ins.error;
+    // 참석자는 지우고 다시 넣지 않고 같은 행을 고칩니다(검토 완료 기록이 이어지도록).
+    var cur = await db.from('meeting_attendees').select('id').eq('meeting_id', id);
+    if (cur.error) throw cur.error;
+    var keep = {};
+    for (var i = 0; i < d.attendees.length; i++) {
+      var a = d.attendees[i];
+      var row = { user_id: a.user_id || null, name: a.name, position: a.position, attended: a.attended, sort_order: i };
+      if (a.id) {
+        keep[a.id] = true;
+        var up = await db.from('meeting_attendees').update(row).eq('id', a.id);
+        if (up.error) throw up.error;
+      } else {
+        var ins = await db.from('meeting_attendees').insert(Object.assign({ meeting_id: id }, row)).select('id').single();
+        if (ins.error) throw ins.error;
+        a.id = ins.data.id; keep[a.id] = true;
+      }
+    }
+    var gone = cur.data.map(function (x) { return x.id; }).filter(function (x) { return !keep[x]; });
+    if (gone.length) {
+      var del = await db.from('meeting_attendees').delete().in('id', gone);
+      if (del.error) throw del.error;
     }
     return id;
   }
@@ -398,14 +409,43 @@ window.whenAuthed.then(function (me) {
     return renderDoc(m, manage);
   }
 
+  // ---------- 검토·수정 제안·수정 이력 도우미 ----------
+  var FIELD = { seq: '회의 차수', kind: '회의 구분', meeting_date: '날짜', start_time: '시작 시각', end_time: '종료 시각', place: '장소',
+    author_name: '작성자명', observers: '배석 인원', agenda: '안건', summary: '회의 내용', result: '회의 결과' };
+  var SUG_FIELDS = ['agenda', 'summary', 'result'];
+  function fmtDT(s) {
+    var d = new Date(s);
+    return (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  // 줄 단위 비교(바뀐 줄만 색으로 표시)
+  function diffView(a, b) {
+    var x = (a || '').split('\n'), y = (b || '').split('\n'), n = x.length, m = y.length, i, j, ops = [];
+    var dp = [];
+    for (i = 0; i <= n; i++) { dp.push(new Array(m + 1).fill(0)); }
+    for (i = n - 1; i >= 0; i--) for (j = m - 1; j >= 0; j--) dp[i][j] = x[i] === y[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    i = 0; j = 0;
+    while (i < n && j < m) {
+      if (x[i] === y[j]) { ops.push(['same', x[i]]); i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) { ops.push(['del', x[i]]); i++; }
+      else { ops.push(['add', y[j]]); j++; }
+    }
+    while (i < n) ops.push(['del', x[i++]]);
+    while (j < m) ops.push(['add', y[j++]]);
+    var box = h('div', { class: 'diff' });
+    ops.forEach(function (o) { box.appendChild(h('div', { class: 'dl ' + o[0], text: (o[0] === 'add' ? '+ ' : o[0] === 'del' ? '− ' : '  ') + o[1] })); });
+    return box;
+  }
+
   async function renderDoc(m, manage) {
     var att = m.meeting_attendees.slice().sort(function (a, b) { return a.sort_order - b.sort_order; });
     var sigByAtt = {};
     m.meeting_signatures.forEach(function (s) { sigByAtt[s.attendee_id] = s; });
+    var rvByAtt = {};
+    (m.meeting_reviews || []).forEach(function (r) { rvByAtt[r.attendee_id] = r; });
     var c = counts(att, m.observers);
     var urls = await signedUrls(m.meeting_photos);
     var curHash = null;
-    if (m.meeting_signatures.length) {
+    if (m.meeting_signatures.length || (m.meeting_reviews || []).length) {
       var hr = await db.rpc('meeting_content_hash', { mid: m.id });
       if (!hr.error) curHash = hr.data;
     }
@@ -512,9 +552,143 @@ window.whenAuthed.then(function (me) {
         nSig ? (bad ? ' ⚠ 서명 이후 내용이 바뀐 흔적이 있어요(' + bad + '건 불일치). 관리자에게 알려 주세요.' : ' ✓ 모든 서명이 현재 회의록 내용과 일치해요.') : '');
     }
 
+    // ----- 검토 완료 / 수정 제안 / 수정 이력 (인쇄 때는 숨김) -----
+    var isDraft = m.status === 'draft';
+    var sugs = (m.meeting_suggestions || []).slice().sort(function (a, b) { return String(a.created_at).localeCompare(String(b.created_at)); });
+    var pending = sugs.filter(function (s) { return s.status === 'pending'; });
+    var attending = att.filter(function (a) { return a.attended; });
+    function isStale(a) { var r = rvByAtt[a.id]; return !!(r && curHash && r.content_hash !== curHash); }
+
+    var reviewPanel = null;
+    if (isDraft || (m.meeting_reviews || []).length) {
+      var nDone = attending.filter(function (a) { return rvByAtt[a.id]; }).length;
+      reviewPanel = h('div', { class: 'panel noprint' }, h('h2', { text: '검토 완료 ' + nDone + '/' + attending.length + '명' }),
+        isDraft ? h('div', { class: 'hint', text: '참석 위원은 아래 회의록을 읽고 본인 이름 옆의 "검토 완료"를 눌러 주세요. 모두 검토해야 서명 받기를 시작할 수 있어요. 고칠 곳이 있으면 "고칠 곳 제안하기"를 써 주세요.' }) : null);
+      attending.forEach(function (a) {
+        var r = rvByAtt[a.id], canDo = isDraft && (a.user_id === me.id || (!a.user_id && manage));
+        var st = r ? h('span', { class: 'rvok' }, '✓ ' + fmtDT(r.reviewed_at) + (r.reviewed_by_name && r.reviewed_by !== a.user_id ? ' (' + r.reviewed_by_name + ' 확인)' : ''),
+                       isStale(a) ? h('span', { class: 'badge signing', text: '수정됨' }) : null)
+                     : h('span', { class: 'wait', text: isDraft ? '검토 전' : '검토 기록 없음' });
+        var row = h('div', { class: 'rv' }, h('div', { class: 'nm', text: a.position + ' ' + a.name + (a.user_id ? '' : ' (계정 없음)') }), st);
+        if (canDo && !r) row.appendChild(h('button', { class: 'primary', type: 'button', text: a.user_id ? '검토 완료' : '대신 확인', onclick: async function () {
+          var x = await db.from('meeting_reviews').insert({ attendee_id: a.id, meeting_id: m.id });
+          if (x.error) { fail(x.error); return; }
+          await route(); notice('ok', '검토 완료로 기록했어요.');
+        } }));
+        if (canDo && r) row.appendChild(h('button', { class: 'linkbtn', type: 'button', text: '취소', onclick: async function () {
+          var x = await db.from('meeting_reviews').delete().eq('attendee_id', a.id);
+          if (x.error) { fail(x.error); return; }
+          await route();
+        } }));
+        reviewPanel.appendChild(row);
+      });
+      if (attending.some(isStale)) reviewPanel.appendChild(h('div', { class: 'hint', text: '"수정됨"은 그 위원이 검토한 뒤에 회의록 내용이 바뀌었다는 뜻이에요. 아래 수정 이력을 확인해 주세요.' }));
+    }
+
+    function openSuggest() {
+      var dlg = h('dialog'), box = h('div', { class: 'dlg' });
+      var sel = h('select', null, SUG_FIELDS.map(function (f) { return h('option', { value: f, text: FIELD[f] }); }));
+      var ta = h('textarea', { rows: 12 }); ta.value = m[SUG_FIELDS[0]] || '';
+      sel.onchange = function () { ta.value = m[sel.value] || ''; };
+      var note = h('input', { type: 'text', maxlength: '500', placeholder: '고친 이유 (선택)' });
+      var close = function () { dlg.close(); dlg.remove(); };
+      box.appendChild(h('h3', { text: '고칠 곳 제안하기' }));
+      box.appendChild(h('div', { class: 'hint', text: '고친 글을 적어 보내면 작성자가 확인해 반영해요. 제안한 사람과 내용이 기록으로 남아요. 바로 본문이 바뀌지는 않아요.' }));
+      box.appendChild(h('label', { class: 'l', text: '고칠 항목' })); box.appendChild(sel);
+      box.appendChild(h('label', { class: 'l', text: '고친 내용 (전체 글을 고쳐서 적어 주세요)' })); box.appendChild(ta);
+      box.appendChild(h('label', { class: 'l', text: '이유' })); box.appendChild(note);
+      var send = h('button', { class: 'primary', type: 'button', text: '제안하기', onclick: async function () {
+        var nt = ta.value.trim();
+        if (nt === String(m[sel.value] || '').trim()) { await say('고친 내용이 없어요. 글을 고쳐 주세요.'); return; }
+        send.disabled = true;
+        var x = await db.from('meeting_suggestions').insert({ meeting_id: m.id, field: sel.value, new_text: nt, note: note.value.trim() });
+        send.disabled = false;
+        if (x.error) { await say(friendly(x.error)); return; }
+        close(); await route(); notice('ok', '제안했어요. 작성자가 확인하면 반영돼요.');
+      } });
+      box.appendChild(h('div', { class: 'bar', style: 'margin:14px 0 0' }, h('span', { class: 'sp' }),
+        h('button', { class: 'ghost', type: 'button', text: '취소', onclick: close }), send));
+      dlg.appendChild(box); document.body.appendChild(dlg); dlg.showModal();
+    }
+    async function decide(s, decision, okMsg) {
+      var x = await db.rpc('decide_suggestion', { sid: s.id, decision: decision });
+      if (x.error) { fail(x.error); return; }
+      await route(); notice('ok', okMsg);
+    }
+
+    var sugPanel = null;
+    if (isDraft) {
+      sugPanel = h('div', { class: 'panel noprint' }, h('h2', { text: '수정 제안' + (pending.length ? ' (' + pending.length + '건 대기)' : '') }),
+        h('div', { class: 'bar', style: 'margin:0 0 6px' }, h('button', { class: 'ghost', type: 'button', text: '고칠 곳 제안하기', onclick: openSuggest })));
+      if (!pending.length) sugPanel.appendChild(h('div', { class: 'hint', text: '대기 중인 제안이 없어요.' }));
+      pending.forEach(function (s) {
+        var item = h('div', { class: 'sug' },
+          h('div', { class: 'sh', text: s.proposed_by_name + ' · ' + FIELD[s.field] + ' · ' + fmtDT(s.created_at) }),
+          s.note ? h('div', { class: 'hint', text: '이유: ' + s.note }) : null,
+          diffView(s.base_text, s.new_text));
+        var bar = h('div', { class: 'bar', style: 'margin:8px 0 0' });
+        if (manage) {
+          bar.appendChild(h('button', { class: 'primary', type: 'button', text: '반영', onclick: async function () {
+            var curText = String(m[s.field] || '');
+            if (curText !== s.base_text && !(await ask('이 제안을 낸 뒤에 ' + FIELD[s.field] + '이(가) 이미 바뀌었어요. 반영하면 제안한 글로 통째로 바뀌어요. 그래도 반영할까요?', '반영'))) return;
+            decide(s, 'accept', '반영했어요. 수정 이력에 기록돼요.');
+          } }));
+          bar.appendChild(h('button', { class: 'ghost', type: 'button', text: '거절', onclick: async function () {
+            if (await ask(s.proposed_by_name + ' 님의 제안을 거절할까요?', '거절')) decide(s, 'reject', '거절했어요.');
+          } }));
+        }
+        if (s.proposed_by === me.id) bar.appendChild(h('button', { class: 'linkbtn', type: 'button', text: '제안 취소', onclick: function () { decide(s, 'withdraw', '제안을 취소했어요.'); } }));
+        if (bar.childNodes.length) item.appendChild(bar);
+        sugPanel.appendChild(item);
+      });
+    }
+
+    // 수정 이력: 직접 고친 것 + 제안으로 반영된 것 + 거절·취소된 제안
+    var hist = (m.meeting_changes || []).map(function (x) { return { t: x.changed_at, kind: 'change', x: x }; });
+    sugs.filter(function (s) { return s.status === 'rejected' || s.status === 'withdrawn'; })
+      .forEach(function (s) { hist.push({ t: s.decided_at || s.created_at, kind: 'sug', x: s }); });
+    hist.sort(function (a, b) { return String(b.t).localeCompare(String(a.t)); });
+    var histPanel = null;
+    if (hist.length) {
+      histPanel = h('details', { class: 'panel noprint', open: isDraft ? true : null }, h('summary', { class: 'sumhead', text: '수정 이력 (' + hist.length + '건)' }));
+      hist.forEach(function (e) {
+        var it = h('div', { class: 'hrow' });
+        if (e.kind === 'change') {
+          var x = e.x, long = x.field === 'agenda' || x.field === 'summary' || x.field === 'result';
+          it.appendChild(h('div', { class: 'sh', text: fmtDT(x.changed_at) + ' · ' + (x.changed_by_name || '알 수 없음') + ' · ' + FIELD[x.field] + ' 수정' +
+            (x.suggested_by_name ? ' (제안: ' + x.suggested_by_name + ')' : '') }));
+          it.appendChild(long ? diffView(x.old_text, x.new_text) : h('div', { class: 'hint', text: (x.old_text || '(없음)') + ' → ' + (x.new_text || '(없음)') }));
+        } else {
+          var s = e.x;
+          it.appendChild(h('div', { class: 'sh', text: fmtDT(s.decided_at || s.created_at) + ' · ' + s.proposed_by_name + '의 ' + FIELD[s.field] + ' 제안 · ' +
+            (s.status === 'rejected' ? '거절됨 (' + s.decided_by_name + ')' : '제안자가 취소') }));
+          it.appendChild(diffView(s.base_text, s.new_text));
+        }
+        histPanel.appendChild(it);
+      });
+    }
+
+    async function startSigning() {
+      var need = attending.filter(function (a) { return !rvByAtt[a.id]; });
+      var stale = attending.filter(isStale);
+      var names = function (l) { return l.map(function (a) { return a.name; }).join(', '); };
+      if (need.length && me.role !== 'admin') {
+        await say('아직 검토를 마치지 않은 위원이 ' + need.length + '명 있어요.\n(' + names(need) + ')\n\n참석 위원 모두가 "검토 완료"를 눌러야 서명 받기를 시작할 수 있어요.');
+        return;
+      }
+      var msg = '서명을 받기 시작하면 내용을 고칠 수 없어요(서명이 없다면 초안으로 되돌릴 수는 있어요).\n';
+      if (need.length) msg += '\n※ 검토하지 않은 위원 ' + need.length + '명(' + names(need) + ')이 있지만, 관리자 권한으로 시작해요.';
+      if (stale.length) msg += '\n※ 검토한 뒤에 내용이 바뀐 위원 ' + stale.length + '명(' + names(stale) + ')이 있어요.';
+      if (pending.length) msg += '\n※ 처리하지 않은 수정 제안이 ' + pending.length + '건 있어요. 서명을 시작하면 더는 반영할 수 없어요.';
+      if (await ask(msg + '\n\n계속할까요?', '서명 받기 시작')) setStatus('signing', '서명 받기를 시작했어요. 위원들이 로그인해서 서명하면 돼요.')();
+    }
+    if (isDraft && manage) acts.insertBefore(h('button', { class: 'primary', text: '서명 받기 시작', onclick: startSigning }), acts.querySelector('.ghost.danger'));
+
     var year = (m.meeting_date || '').slice(0, 4);
     app.appendChild(head);
     app.appendChild(acts);
+    if (reviewPanel) app.appendChild(reviewPanel);
+    if (sugPanel) app.appendChild(sugPanel);
     app.appendChild(h('div', { class: 'doc' },
       h('div', { class: 'cover' }, h('div', { class: 'c1' }, '쌍용더플래티넘장항', h('br'), '작은도서관 운영위원회', h('br'), '회의록'), h('div', { class: 'c2', text: year + '년' })),
       h('h2', { text: '1. 회의 개요' }), overview, overviewN,
@@ -523,6 +697,7 @@ window.whenAuthed.then(function (me) {
         h('h2', { text: '3. 참석자 명부 및 서명부' }), h('p', { class: 'pledge', text: '위 결의사항의 명확을 기하기 위하여 연서·날인합니다.' }), roster, rosterN),
       h('h2', { class: 'p3', text: '4. 회의 사진' }), photos,
       proof));
+    if (histPanel) app.appendChild(histPanel);
   }
 
   // ---------- 전자서명 ----------

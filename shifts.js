@@ -20,7 +20,7 @@ window.whenAuthed.then(function (me) {
     return (ws.getMonth() + 1) + '월 ' + nth + '주 · ' + md(ws) + '~' + md(we);
   }
   function at(date, slot) { var k = U.ymd(date); return shifts.filter(function (s) { return s.shift_date === k && s.slot === slot; }); }
-  var isVol = !!me.isVolunteer, canApprove = me.can('shifts_approve'), requests = [];
+  var isVol = !!me.isVolunteer, canApprove = me.can('shifts_approve'), requests = [], history = [], histLimit = 30;
   function canRemove(s) { return canApprove || (!isVol && (s.created_by === me.id || s.user_id === me.id)); }
   function pendingFor(s) { return requests.filter(function (r) { return r.shift_id === s.id && r.status === 'pending'; })[0]; }
 
@@ -42,6 +42,8 @@ window.whenAuthed.then(function (me) {
     shifts = s.data;
     var q = await db.from('shift_change_requests').select('*').order('created_at', { ascending: false }).limit(80);
     requests = q.error ? [] : q.data;     // 표가 아직 없으면(SQL 미적용) 변경 요청 기능만 빠진 채 계속 동작
+    var hq = await db.from('shift_history').select('*').order('happened_at', { ascending: false }).limit(histLimit + 1);
+    history = hq.error ? [] : hq.data;
   }
   async function refresh() { try { await loadWeek(); render(); if (openCellKey && $('cell-dlg').open) fillCell(); } catch (e) { U.fail(e); } }
 
@@ -108,6 +110,7 @@ window.whenAuthed.then(function (me) {
       keys.length ? h('div', { class: 'counts' }, keys.map(function (k) { return h('span', { class: 'badge gold', text: k + ' ' + tally[k] + '회' }); })) : h('div', { class: 'hint', text: '아직 근무가 정해지지 않았어요.' })));
 
     renderRequests();
+    renderHistory();
   }
 
   // ---------- 근무 변경 요청 ----------
@@ -147,6 +150,39 @@ window.whenAuthed.then(function (me) {
       });
       app.appendChild(q);
     }
+  }
+  // ---------- 근무 이력 ----------
+  function histLine(e) {
+    var when = fmtShort(e.shift_date) + ' ' + e.slot, who = e.actor_name || '알 수 없음', subj = e.subject_name;
+    switch (e.action) {
+      case 'apply': return who === subj ? subj + ' 님이 ' + when + ' 근무를 신청' : who + ' 님이 ' + subj + ' 님을 ' + when + ' 근무에 넣음';
+      case 'remove': return e.request_id
+        ? subj + ' 님의 ' + when + ' 근무 취소 (요청 승인: ' + who + ', 요청자 ' + e.requested_by_name + ')'
+        : who + ' 님이 ' + subj + ' 님의 ' + when + ' 근무를 뺌';
+      case 'move': return e.request_id
+        ? subj + ' 님의 근무 ' + when + ' → ' + fmtShort(e.new_date) + ' ' + e.new_slot + ' (요청 승인: ' + who + ')'
+        : who + ' 님이 ' + subj + ' 님의 근무를 ' + when + ' → ' + fmtShort(e.new_date) + ' ' + e.new_slot + ' 로 옮김';
+      case 'request': return subj + ' 님이 변경 요청: ' + when + (e.new_date ? ' → ' + fmtShort(e.new_date) + ' ' + e.new_slot + ' 로 변경' : ' 근무 취소');
+      case 'reject': return who + ' 님이 ' + subj + ' 님의 변경 요청을 거절 (' + when + (e.new_date ? ' → ' + fmtShort(e.new_date) + ' ' + e.new_slot : ' 취소') + ')';
+      case 'withdraw': return subj + ' 님이 변경 요청을 취소 (' + when + ')';
+      default: return e.action;
+    }
+  }
+  function histTime(s) {
+    var d = new Date(s);
+    return d.getFullYear() + '.' + (d.getMonth() + 1) + '.' + d.getDate() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function renderHistory() {
+    var more = history.length > histLimit, list = history.slice(0, histLimit);
+    var p = h('details', { class: 'panel noprint', style: 'margin-top:14px' }, h('summary', { style: 'cursor:pointer;font-weight:600;color:var(--navy)', text: '근무 이력 (신청 · 변경 · 승인 기록)' }));
+    if (!list.length) p.appendChild(h('div', { class: 'hint', style: 'margin-top:8px', text: '아직 기록이 없어요. 근무를 신청하거나 바꾸면 자동으로 남아요.' }));
+    list.forEach(function (e) {
+      p.appendChild(h('div', { class: 'shiftrow', style: 'flex-direction:column;align-items:flex-start;gap:2px' },
+        h('div', { text: histLine(e) }),
+        h('div', { class: 'nt', text: histTime(e.happened_at) + (e.reason && (e.action === 'request' || e.request_id) ? ' · 이유: ' + e.reason : '') })));
+    });
+    if (more) p.appendChild(h('div', { class: 'bar', style: 'margin:10px 0 0' }, h('button', { class: 'ghost', type: 'button', text: '더 보기', onclick: function () { histLimit += 30; refresh().then(function () { var d = document.querySelector('details.panel:last-of-type'); if (d) d.open = true; }); } })));
+    app.appendChild(p);
   }
   function openChangeRequest(s) {
     var dlg = h('dialog', { style: 'margin:auto' }), box = h('div', { class: 'dlg' }), close = function () { dlg.close(); dlg.remove(); };

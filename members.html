@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>작은도서관 운영위원회 · 회원 승인</title>
-<script src="guard.js?v=8"></script>
+<script src="guard.js?v=9"></script>
 <style>
   :root { --bg:#f3f2f2; --text:#201f1d; --muted:#6c6b69; --accent:#b68235; --accent-700:#7d5411; --line:#dcdad7; --err:#a8321f; --ok:#2f6b3a; }
   * { box-sizing:border-box; margin:0; }
@@ -171,9 +171,9 @@
           var sel = document.createElement("select"); sel.setAttribute("aria-label", (row.name || "") + " 직책");
           POS.forEach(function (p) { var o = document.createElement("option"); o.value = p; o.textContent = p; sel.appendChild(o); });
           sel.value = row.position || "운영위원";
-          sel.onchange = function () { setField(row, { position: sel.value }, (row.name || "위원") + " 님의 직책을 " + sel.value + "(으)로 바꿨어요."); };
+          sel.onchange = function () { setField(row, sel.value === "자원봉사" ? { position: sel.value, shift_manager: false } : { position: sel.value }, (row.name || "위원") + " 님의 직책을 " + sel.value + "(으)로 바꿨어요."); };
           tpos.appendChild(sel);
-          if (row.shift_manager !== undefined) {
+          if (row.shift_manager !== undefined && row.position !== "자원봉사") {
             var lab = document.createElement("label"), cb = document.createElement("input");
             lab.style.cssText = "display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted);margin-top:4px";
             cb.type = "checkbox"; cb.checked = !!row.shift_manager;

@@ -24,7 +24,12 @@
     }
     p.isVolunteer = p.position === "자원봉사";
     // 근무 담당자로 지정된 위원은 직책과 상관없이 근무 변경을 승인할 수 있어요.
-    p.can = function (perm) { return p.role === "admin" || perms[perm] === true || (perm === "shifts_approve" && p.shift_manager === true); };
+    // 자원봉사는 근무 변경을 승인할 수 없어요(담당자 표시가 있어도). 관리자는 항상 가능.
+    p.can = function (perm) {
+      if (p.role === "admin") return true;
+      if (perm === "shifts_approve") return !p.isVolunteer && (perms[perm] === true || p.shift_manager === true);
+      return perms[perm] === true;
+    };
     return p;
   }
 

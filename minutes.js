@@ -1,6 +1,12 @@
 // 회의록 화면: 목록 / 작성 / 문서 보기(회의록 양식) / 전자서명 / 사진 / 인쇄
 window.whenAuthed.then(function (me) {
   'use strict';
+  // 자원봉사는 회의록을 인쇄·PDF로 저장할 수 없어요(버튼을 없애고, 브라우저 인쇄(Ctrl+P)를 해도 빈 종이가 나오게 함).
+  if (me.isVolunteer) {
+    var nop = document.createElement('style');
+    nop.textContent = '@media print { body { display: none !important; } }';
+    document.head.appendChild(nop);
+  }
   var db = Auth.client;
   var BUCKET = 'meeting-photos';
   var POS = ['위원장', '부위원장', '총무', '감사', '운영위원', '자원봉사'];
@@ -473,7 +479,7 @@ window.whenAuthed.then(function (me) {
         if (await ask((left > 0 ? '아직 서명하지 않은 위원이 ' + left + '명 있어요. ' : '') + '서명을 마감할까요? 마감하면 더는 서명할 수 없어요.', '마감')) setStatus('closed', '서명을 마감했어요.')();
       } }));
     }
-    acts.appendChild(h('button', { class: 'ghost', text: '인쇄 · PDF 저장', onclick: function () { window.print(); } }));
+    if (!me.isVolunteer) acts.appendChild(h('button', { class: 'ghost', text: '인쇄 · PDF 저장', onclick: function () { window.print(); } }));   // 자원봉사는 인쇄 불가
     if (me.role === 'admin' || (m.author_id === me.id && m.status === 'draft'))
       acts.appendChild(h('button', { class: 'ghost danger', text: '삭제', onclick: function () { removeMeeting(m.id, m.meeting_photos); } }));
 

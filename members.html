@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>작은도서관 운영위원회 · 회원 승인</title>
-<script src="guard.js?v=10"></script>
+<script src="guard.js?v=11"></script>
 <style>
-  :root { --bg:#eef6f1; --text:#201f1d; --muted:#6c6b69; --accent:#11bf53; --accent-700:#0a7d36; --line:#d3e2d8; --err:#a8321f; --ok:#2f6b3a; }
+  :root { --bg:#ffffff; --text:#201f1d; --muted:#6c6b69; --accent:#1f4b8f; --accent-700:#14305c; --line:#dde3ec; --err:#a8321f; --ok:#2f6b3a; }
   * { box-sizing:border-box; margin:0; }
   body { min-height:100vh; padding:64px 20px 80px; background:var(--bg); color:var(--text);
     font:16px/1.6 "IBM Plex Sans KR","Malgun Gothic",-apple-system,sans-serif; }
@@ -19,12 +19,12 @@
   table { width:100%; border-collapse:collapse; }
   th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); font-size:15px; vertical-align:middle; }
   th { font-size:13px; color:var(--muted); font-weight:500; }
-  button { font:inherit; border:0; border-radius:4px; padding:7px 12px; cursor:pointer; background:var(--accent); color:#0b2a4a; font-weight:700; margin:2px 4px 2px 0; }
+  button { font:inherit; border:0; border-radius:4px; padding:7px 12px; cursor:pointer; background:var(--accent); color:#fff; font-weight:700; margin:2px 4px 2px 0; }
   button.ghost { background:#fff; color:var(--text); border:1px solid var(--line); font-weight:500; }
   button.danger { background:#fff; color:var(--err); border:1px solid var(--line); font-weight:500; }
   button:disabled { opacity:.6; cursor:default; }
   .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:13px; }
-  .b-pending { background:#e3f6ea; color:var(--accent-700); }
+  .b-pending { background:#e8edf5; color:var(--accent-700); }
   .b-approved { background:#e8f3ea; color:var(--ok); }
   .b-rejected { background:#fbeae6; color:var(--err); }
   .msg { margin-top:12px; padding:10px 12px; border-radius:4px; font-size:14px; display:none; }

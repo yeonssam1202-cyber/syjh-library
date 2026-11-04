@@ -4,7 +4,7 @@
   function askBox(msg, okText, noText) {
     return new Promise(function (done) {
       var dlg = document.createElement('dialog');
-      dlg.style.cssText = 'margin:auto;border:1px solid #d3e2d8;border-radius:8px;padding:20px;width:min(420px,calc(100vw - 24px));color:#201f1d;font:16px/1.6 "Malgun Gothic",-apple-system,sans-serif';
+      dlg.style.cssText = 'margin:auto;border:1px solid #dde3ec;border-radius:8px;padding:20px;width:min(420px,calc(100vw - 24px));color:#201f1d;font:16px/1.6 "Malgun Gothic",-apple-system,sans-serif';
       var p = document.createElement('div');
       p.textContent = msg; p.style.cssText = 'white-space:pre-wrap;margin-bottom:16px';
       var bar = document.createElement('div');
@@ -13,7 +13,7 @@
       function mk(text, primary, v) {
         var b = document.createElement('button'); b.type = 'button'; b.textContent = text;
         b.style.cssText = 'font:inherit;cursor:pointer;border-radius:4px;padding:10px 18px;' +
-          (primary ? 'background:#11bf53;color:#0b2a4a;border:0;font-weight:700' : 'background:#fff;color:#201f1d;border:1px solid #d3e2d8');
+          (primary ? 'background:#1f4b8f;color:#fff;border:0;font-weight:700' : 'background:#fff;color:#201f1d;border:1px solid #dde3ec');
         b.onclick = function () { finish(v); };
         return b;
       }

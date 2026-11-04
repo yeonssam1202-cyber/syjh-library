@@ -33,21 +33,21 @@
     links.forEach(function (l) {
       var a = document.createElement("a");
       a.textContent = l[0]; a.href = base + l[1];
-      a.style.cssText = "color:#0a7d36;text-decoration:none;font-weight:600";
+      a.style.cssText = "color:#14305c;text-decoration:none;font-weight:600";
       box.appendChild(a);
     });
     bar.appendChild(box);
     var toggle = document.createElement("button");
     toggle.className = "bar-toggle";
     toggle.textContent = "메뉴 ▲";
-    toggle.style.cssText = "display:none;border:1px solid #ddd;background:#fff;color:#0a7d36;border-radius:999px;font:inherit;font-weight:600;cursor:pointer";
+    toggle.style.cssText = "display:none;border:1px solid #ddd;background:#fff;color:#14305c;border-radius:999px;font:inherit;font-weight:600;cursor:pointer";
     toggle.onclick = function () { bar.classList.toggle("open"); toggle.textContent = bar.classList.contains("open") ? "메뉴 ▼" : "메뉴 ▲"; };
     bar.appendChild(toggle);
     var who = document.createElement("span");
     who.textContent = (p.name || p.email || "") + (p.role === "admin" ? " (관리자)" : "");
     var btn = document.createElement("button");
     btn.textContent = "로그아웃";
-    btn.style.cssText = "border:0;background:#11bf53;color:#0b2a4a;font-weight:700;border-radius:999px;padding:7px 12px;font:inherit;cursor:pointer";
+    btn.style.cssText = "border:0;background:#1f4b8f;color:#fff;font-weight:700;border-radius:999px;padding:7px 12px;font:inherit;cursor:pointer";
     btn.onclick = async function () { await Auth.client.auth.signOut(); location.replace(loginUrl); };
     bar.appendChild(who); bar.appendChild(btn);
     // 폰 배치 규칙을 바 안에 함께 넣어, 화면이 통째로 교체돼도 같이 유지되게 합니다.
@@ -55,7 +55,7 @@
     st.textContent = "@media (max-width:820px){#app-bar{top:auto!important;bottom:10px!important;left:10px!important;right:10px!important;max-width:none!important;" +
       "justify-content:space-between!important;row-gap:4px!important;border-radius:14px!important;padding:6px 10px!important;font-size:15px!important}" +
       "#bar-links{display:none!important;width:100%;flex-wrap:wrap;gap:2px 6px;padding-bottom:6px;border-bottom:1px solid #eee}" +
-      "#app-bar.open #bar-links{display:flex!important}#bar-links a{padding:11px 10px;background:#f0f9f3;border-radius:8px}" +
+      "#app-bar.open #bar-links{display:flex!important}#bar-links a{padding:11px 10px;background:#f5f7fb;border-radius:8px}" +
       "#app-bar .bar-toggle{display:inline-block!important}#app-bar button{padding:9px 14px!important}#app-bar span{display:none!important}body{padding-bottom:72px!important}}" +
       "@media print{#app-bar{display:none!important}}";
     bar.appendChild(st);

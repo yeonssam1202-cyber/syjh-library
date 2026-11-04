@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>업무 목록 · 작은도서관 운영위원회</title>
-<script src="guard.js?v=10"></script>
+<script src="guard.js?v=11"></script>
 <style>
-  :root { --bg:#eef6f1; --text:#201f1d; --muted:#6c6b69; --accent:#11bf53; --accent-700:#0a7d36; --line:#d3e2d8; --err:#a8321f; --card:#fff; }
+  :root { --bg:#ffffff; --text:#201f1d; --muted:#6c6b69; --accent:#1f4b8f; --accent-700:#14305c; --line:#dde3ec; --err:#a8321f; --card:#fff; }
   * { box-sizing:border-box; margin:0; }
   body { background:var(--bg); color:var(--text); font:15px/1.6 "IBM Plex Sans KR","Malgun Gothic",-apple-system,sans-serif; padding:64px 20px 60px; }
   .wrap { max-width:960px; margin:0 auto; }
@@ -14,12 +14,12 @@
   .mark { font-size:13px; letter-spacing:.06em; color:var(--accent-700); }
   h1 { font-size:28px; font-weight:600; }
   button { font:inherit; cursor:pointer; }
-  .primary { background:var(--accent); color:#0b2a4a; border:0; border-radius:4px; padding:10px 16px; font-weight:600; }
+  .primary { background:var(--accent); color:#fff; border:0; border-radius:4px; padding:10px 16px; font-weight:600; }
   .ghost { background:#fff; border:1px solid var(--line); border-radius:4px; padding:9px 14px; }
   .danger { color:var(--err); }
   .filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
   .chip { border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 14px; font-size:14px; color:var(--muted); }
-  .chip[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#0b2a4a; font-weight:700; }
+  .chip[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
   .counts { color:var(--muted); font-size:14px; margin:0 0 10px; }
   .list { display:flex; flex-direction:column; gap:10px; }
   .task { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px 18px; display:grid; grid-template-columns:1fr auto; gap:6px 16px; }
@@ -27,8 +27,8 @@
   .title { font-weight:600; font-size:16px; word-break:break-word; }
   .desc { color:var(--muted); font-size:14px; white-space:pre-wrap; word-break:break-word; grid-column:1 / -1; }
   .meta { display:flex; gap:8px; flex-wrap:wrap; align-items:center; grid-column:1 / -1; font-size:13px; }
-  .who { background:#e3f6ea; color:var(--accent-700); border-radius:999px; padding:2px 10px; }
-  .who.me { background:var(--accent); color:#0b2a4a; }
+  .who { background:#e8edf5; color:var(--accent-700); border-radius:999px; padding:2px 10px; }
+  .who.me { background:var(--accent); color:#fff; }
   .due { color:var(--muted); }
   .due.late { color:var(--err); font-weight:600; }
   .by { color:var(--muted); }
@@ -49,7 +49,7 @@
   .row > div { flex:1; }
   .people { display:flex; flex-wrap:wrap; gap:6px; max-height:150px; overflow:auto; padding:2px 0; }
   .people label { margin:0; display:flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:999px; padding:5px 12px; cursor:pointer; background:#fff; }
-  .people label:has(input:checked) { background:#e3f6ea; border-color:var(--accent); color:var(--accent-700); }
+  .people label:has(input:checked) { background:#e8edf5; border-color:var(--accent); color:var(--accent-700); }
   .people input { accent-color:var(--accent-700); }
   .foot { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
   @media (max-width:560px) { .task { grid-template-columns:1fr; } .row { flex-direction:column; } }

@@ -1,12 +1,12 @@
 /* 회칙·세칙 / 예산·지출 / 근무표 화면이 함께 쓰는 스타일 */
-:root { --bg:#eef6f1; --text:#201f1d; --muted:#6c6b69; --accent:#11bf53; --accent-700:#0a7d36; --line:#d3e2d8;
+:root { --bg:#ffffff; --text:#201f1d; --muted:#6c6b69; --accent:#1f4b8f; --accent-700:#14305c; --line:#dde3ec;
         --err:#a8321f; --ok:#2f6b3a; --warn:#9a5b00; --navy:#14305c; --head:#dde3f4; }
 * { box-sizing:border-box; margin:0; }
 body { background:var(--bg); color:var(--text); font:16px/1.65 "IBM Plex Sans KR","Malgun Gothic",-apple-system,sans-serif; padding:64px 16px 100px; }
 .wrap { max-width:1000px; margin:0 auto; }
 button { font:inherit; cursor:pointer; }
 button:disabled { opacity:.55; cursor:default; }
-.primary { background:var(--accent); color:#0b2a4a; border:0; border-radius:4px; padding:11px 18px; font-weight:600; }
+.primary { background:var(--accent); color:#fff; border:0; border-radius:4px; padding:11px 18px; font-weight:600; }
 .ghost { background:#fff; border:1px solid var(--line); border-radius:4px; padding:10px 16px; }
 .danger { color:var(--err); }
 .linkbtn { background:none; border:0; color:var(--accent-700); text-decoration:underline; padding:4px 0; }
@@ -27,16 +27,16 @@ input[type=checkbox] { width:22px; height:22px; accent-color:var(--accent-700); 
 .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
 .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 14px; }
 .hint { color:var(--muted); font-size:14px; margin-top:4px; }
-.badge { display:inline-block; font-size:13px; padding:2px 10px; border-radius:999px; background:#e6efe9; color:var(--muted); }
+.badge { display:inline-block; font-size:13px; padding:2px 10px; border-radius:999px; background:#eceff4; color:var(--muted); }
 .badge.warn { background:#fbeae6; color:var(--err); }
 .badge.ok { background:#e8f3ea; color:var(--ok); }
-.badge.gold { background:#e3f6ea; color:var(--accent-700); }
+.badge.gold { background:#e8edf5; color:var(--accent-700); }
 .empty { text-align:center; color:var(--muted); padding:40px 12px; background:#fff; border:1px dashed var(--line); border-radius:8px; }
 .bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:12px 0; }
 .bar .sp { flex:1; }
 .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
 .chip { border:1px solid var(--line); background:#fff; border-radius:999px; padding:7px 16px; font-size:15px; color:var(--muted); }
-.chip[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#0b2a4a; font-weight:700; }
+.chip[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
 .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
 .stat { background:#fff; border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
 .stat .n { font-size:24px; font-weight:600; font-variant-numeric:tabular-nums; }

@@ -1,19 +1,19 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>회의록 · 작은도서관 운영위원회</title>
-<script src="guard.js?v=10"></script>
+<script src="guard.js?v=11"></script>
 <style>
-  :root { --bg:#eef6f1; --text:#201f1d; --muted:#6c6b69; --accent:#11bf53; --accent-700:#0a7d36; --line:#d3e2d8; --err:#a8321f; --ok:#2f6b3a;
+  :root { --bg:#ffffff; --text:#201f1d; --muted:#6c6b69; --accent:#1f4b8f; --accent-700:#14305c; --line:#dde3ec; --err:#a8321f; --ok:#2f6b3a;
           --navy:#14305c; --head:#dde3f4; }
   * { box-sizing:border-box; margin:0; }
   body { background:var(--bg); color:var(--text); font:16px/1.65 "IBM Plex Sans KR","Malgun Gothic",-apple-system,sans-serif; padding:64px 16px 80px; }
   .wrap { max-width:900px; margin:0 auto; }
   button { font:inherit; cursor:pointer; }
   button:disabled { opacity:.55; cursor:default; }
-  .primary { background:var(--accent); color:#0b2a4a; border:0; border-radius:4px; padding:11px 18px; font-weight:600; }
+  .primary { background:var(--accent); color:#fff; border:0; border-radius:4px; padding:11px 18px; font-weight:600; }
   .ghost { background:#fff; border:1px solid var(--line); border-radius:4px; padding:10px 16px; }
   .danger { color:var(--err); }
   .linkbtn { background:none; border:0; color:var(--accent-700); text-decoration:underline; padding:4px 0; }
@@ -31,9 +31,9 @@
   .card .t { font-weight:600; font-size:17px; }
   .card .s { color:var(--muted); font-size:14px; margin-top:2px; }
   .badges { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
-  .badge { font-size:13px; padding:2px 10px; border-radius:999px; background:#e6efe9; color:var(--muted); }
-  .badge.draft { background:#e6efe9; }
-  .badge.signing { background:#e3f6ea; color:var(--accent-700); }
+  .badge { font-size:13px; padding:2px 10px; border-radius:999px; background:#eceff4; color:var(--muted); }
+  .badge.draft { background:#eceff4; }
+  .badge.signing { background:#e8edf5; color:var(--accent-700); }
   .badge.closed { background:#e8f3ea; color:var(--ok); }
   .empty { text-align:center; color:var(--muted); padding:44px 0; background:#fff; border:1px dashed var(--line); border-radius:8px; }
 
@@ -53,7 +53,7 @@
   .att input[type=checkbox] { width:22px; height:22px; accent-color:var(--accent-700); }
   .att .nm { font-size:16px; }
   .att .nm small { color:var(--muted); }
-  .sum { margin-top:10px; padding:10px 12px; border-radius:6px; background:#e3f6ea; color:var(--accent-700); font-size:15px; }
+  .sum { margin-top:10px; padding:10px 12px; border-radius:6px; background:#e8edf5; color:var(--accent-700); font-size:15px; }
   .sum.bad { background:#fbeae6; color:var(--err); }
   .addrow { display:flex; gap:8px; margin-top:10px; }
   .photos { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }

@@ -68,6 +68,87 @@ window.whenAuthed.then(async function (me) {
   })));
   else app.appendChild(h('div', { class: 'allclear', text: '✓ 지금 확인할 일이 없어요.' }));
 
+  // ----- 달력: 회의 일정 · 업무 마감 · 근무 (실제 데이터) -----
+  var calBox = h('div', { class: 'calwrap' });
+  app.appendChild(h('h2', { style: 'font-size:18px;margin:18px 0 8px;color:var(--navy)', text: '일정 달력' }));
+  app.appendChild(calBox);
+  buildCalendar(calBox);
+
+  function buildCalendar(box) {
+    var cur = new Date(); cur.setDate(1);
+    var sel = today, data = { events: [], tasks: [], shifts: [] };
+    var COLORS = { ev: '#14305c', task: '#c27a1a', shift: '#2f8f6b' };
+
+    async function loadMonth() {
+      var a = U.ymd(cur), last = U.ymd(new Date(cur.getFullYear(), cur.getMonth() + 1, 0));
+      var r = await Promise.all([
+        safe(db.from('meeting_events').select('id,title,kind,event_date,start_time,place').gte('event_date', a).lte('event_date', last).order('start_time'), []),
+        safe(db.from('tasks').select('id,title,status,due_date,task_assignees(user_id,role)').gte('due_date', a).lte('due_date', last), []),
+        safe(db.from('shifts').select('user_id,name,shift_date,slot').gte('shift_date', a).lte('shift_date', last).order('slot'), [])
+      ]);
+      data = { events: r[0], tasks: r[1], shifts: r[2] };
+    }
+    function itemsOn(ymd) {
+      var items = [];
+      data.events.filter(function (e) { return e.event_date === ymd; }).forEach(function (e) { items.push({ k: 'ev', t: (hm(e.start_time) ? hm(e.start_time) + ' ' : '') + e.title, href: 'schedule.html', sort: hm(e.start_time) || '00:00' }); });
+      data.tasks.filter(function (x) { return x.due_date === ymd; }).forEach(function (x) {
+        var mine = x.task_assignees.some(function (a) { return a.user_id === me.id; });
+        items.push({ k: 'task', t: x.title + (x.status === 'done' ? ' (완료)' : ''), mine: mine, done: x.status === 'done', href: 'tasks.html', sort: '09:99' });
+      });
+      var sh = data.shifts.filter(function (s) { return s.shift_date === ymd; });
+      sh.forEach(function (s) { items.push({ k: 'shift', t: s.name + ' · ' + s.slot, short: s.name + ' ' + s.slot.slice(0, 2) + '시', mine: s.user_id === me.id, href: 'shifts.html', sort: s.slot.slice(0, 5) }); });
+      return items.sort(function (a, b) { return a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0; });
+    }
+
+    function draw() {
+      box.textContent = '';
+      var y = cur.getFullYear(), m = cur.getMonth(), firstDow = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
+      var grid = h('div', { class: 'calgrid' });
+      DAYS.forEach(function (d, i) { grid.appendChild(h('div', { class: 'dow' + (i === 0 ? ' sun' : i === 6 ? ' sat' : ''), text: d })); });
+      for (var i = 0; i < firstDow; i++) grid.appendChild(h('div', { class: 'cell empty' }));
+      for (var d = 1; d <= days; d++) {
+        (function (d) {
+          var ymd = y + '-' + U.pad(m + 1) + '-' + U.pad(d), items = itemsOn(ymd), dow = new Date(y, m, d).getDay();
+          var cell = h('button', { type: 'button', class: 'cell' + (ymd === today ? ' today' : '') + (ymd === sel ? ' sel' : '') + (dow === 0 ? ' sun' : dow === 6 ? ' sat' : ''), 'aria-label': (m + 1) + '월 ' + d + '일 ' + items.length + '건',
+            onclick: function () { sel = ymd; draw(); } }, h('div', { class: 'dn', text: String(d) }));
+          // PC: 항목 글자 칩 3개까지 / 폰: 색 점
+          var chips = h('div', { class: 'chips2' });
+          items.slice(0, 3).forEach(function (it) { chips.appendChild(h('div', { class: 'chip2 ' + it.k + (it.mine ? ' mine' : '') + (it.done ? ' done' : ''), text: it.short || it.t })); });
+          if (items.length > 3) chips.appendChild(h('div', { class: 'more', text: '+' + (items.length - 3) + '건' }));
+          cell.appendChild(chips);
+          var dots = h('div', { class: 'dots' });
+          var kinds = {}; items.forEach(function (it) { kinds[it.k] = (kinds[it.k] || 0) + 1; });
+          Object.keys(kinds).forEach(function (k) { dots.appendChild(h('span', { class: 'dot ' + k })); });
+          cell.appendChild(dots);
+          grid.appendChild(cell);
+        })(d);
+      }
+      var head = h('div', { class: 'calhead' },
+        h('div', { class: 'ttl', text: y + '년 ' + (m + 1) + '월' }),
+        h('div', { class: 'nav' },
+          h('button', { class: 'ghost', type: 'button', 'aria-label': '이전 달', text: '‹', onclick: function () { cur = new Date(y, m - 1, 1); change(); } }),
+          h('button', { class: 'ghost', type: 'button', text: '오늘', onclick: function () { cur = new Date(); cur.setDate(1); sel = today; change(); } }),
+          h('button', { class: 'ghost', type: 'button', 'aria-label': '다음 달', text: '›', onclick: function () { cur = new Date(y, m + 1, 1); change(); } })));
+      var legend = h('div', { class: 'legend2' },
+        h('span', null, h('span', { class: 'dot ev' }), ' 회의'), h('span', null, h('span', { class: 'dot task' }), ' 업무 마감'), h('span', null, h('span', { class: 'dot shift' }), ' 근무 (내 근무는 굵게)'));
+      var left = h('div', { class: 'calmain' }, head, grid, legend);
+
+      // 선택한 날 내용
+      var sd = U.parseYmd(sel), list = itemsOn(sel);
+      var right = h('div', { class: 'calday' }, h('h3', { text: (sd.getMonth() + 1) + '월 ' + sd.getDate() + '일 (' + DAYS[sd.getDay()] + ')' + (sel === today ? ' · 오늘' : '') }));
+      if (!list.length) right.appendChild(h('div', { class: 'hint', text: '이 날은 등록된 일정이 없어요.' }));
+      var LAB = { ev: '회의', task: '업무 마감', shift: '근무' };
+      list.forEach(function (it) {
+        right.appendChild(h('a', { class: 'ditem ' + it.k, href: it.href },
+          h('span', { class: 'dot ' + it.k }), h('span', { class: 'k', text: LAB[it.k] }),
+          h('span', { class: 'tt' + (it.mine ? ' mine' : '') + (it.done ? ' done' : ''), text: it.t + (it.k === 'task' && it.mine ? ' · 내 업무' : '') })));
+      });
+      box.appendChild(left); box.appendChild(right);
+    }
+    async function change() { await loadMonth(); draw(); }
+    change();
+  }
+
   // 다음 회의
   var next = h('div', { class: 'card2', id: 'next' }, h('h2', null, '다음 회의', h('a', { href: 'schedule.html', text: '일정 전체 ›' })));
   if (!ev) next.appendChild(h('div', { class: 'hint', text: '등록된 다음 회의 일정이 없어요.' }));

@@ -44,7 +44,7 @@
   <div class="mark">작은도서관 운영위원회</div>
   <h1>회원 승인</h1>
   <p class="sub">가입 신청한 위원을 승인하거나 거절합니다. 관리자만 볼 수 있어요.</p>
-  <div id="denied" class="card hide">관리자만 사용할 수 있는 화면이에요. <a href="app.html">홈으로 돌아가기</a></div>
+  <div id="denied" class="card hide">관리자만 사용할 수 있는 화면이에요. <a href="home.html">홈으로 돌아가기</a></div>
   <div id="msg" class="msg"></div>
 
   <section class="card hide" id="box-pending">
@@ -87,7 +87,7 @@
     var POS = ["위원장", "부위원장", "총무", "감사", "운영위원", "자원봉사"];
     var PERMS = [["minutes_write", "회의록 쓰기"], ["expense_write", "지출 기록"], ["budget_edit", "예산 항목 편집"],
       ["rules_edit", "회칙·세칙 등록·삭제"], ["shifts_settings", "근무표 설정"], ["docs_upload", "자료실 올리기·삭제"],
-      ["tasks_write", "업무 목록 쓰기"], ["minutes_suggest", "회의록 수정 제안"], ["shifts_approve", "근무 변경 승인"], ["notice_write", "공지 쓰기"], ["audit_write", "감사 보고서 쓰기"]];
+      ["tasks_write", "업무 목록 쓰기"], ["minutes_suggest", "회의록 수정 제안"], ["shifts_approve", "근무 변경 승인"], ["notice_write", "공지 쓰기"], ["audit_write", "감사 보고서 쓰기"], ["export_basic", "자료 내보내기(지출·근무표 등)"], ["meeting_schedule", "회의 일정 등록"]];
 
     async function loadPerms() {
       var r = await client.from("role_permissions").select("position,perm,allowed");

@@ -130,7 +130,7 @@
   async function routeByStatus() {
     var p = await Auth.getProfile();
     if (!p) return;
-    if (p.status === "approved") { location.replace("app.html"); return; }
+    if (p.status === "approved") { location.replace("home.html"); return; }
     await Auth.client.auth.signOut();
     show("info", p.status === "rejected"
       ? "가입이 승인되지 않았어요. 관리자에게 문의해 주세요."

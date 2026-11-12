@@ -1,0 +1,15 @@
+{
+  "name": "작은도서관 운영위원회 업무공간",
+  "short_name": "작은도서관",
+  "description": "쌍용더플래티넘장항 작은도서관 운영위원회 업무공간",
+  "start_url": "./home.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#14305c",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

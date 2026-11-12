@@ -29,6 +29,9 @@
   .meta { display:flex; gap:8px; flex-wrap:wrap; align-items:center; grid-column:1 / -1; font-size:13px; }
   .who { background:#e8edf5; color:var(--accent-700); border-radius:999px; padding:2px 10px; }
   .who.me { background:var(--accent); color:#fff; }
+  .who.main { font-weight:700; }
+  .who.sub { background:#f3f5f8; color:var(--muted); }
+  .who.sub.me { background:var(--accent); color:#fff; }
   .due { color:var(--muted); }
   .due.late { color:var(--err); font-weight:600; }
   .by { color:var(--muted); }
@@ -37,7 +40,7 @@
   .empty { text-align:center; color:var(--muted); padding:40px 0; background:#fff; border:1px dashed var(--line); border-radius:8px; }
   .notice { background:#fbeae6; color:var(--err); padding:10px 14px; border-radius:6px; margin-bottom:14px; display:none; }
   .notice.show { display:block; }
-  dialog { border:1px solid var(--line); border-radius:8px; padding:0; width:min(520px, calc(100vw - 32px)); color:var(--text); }
+  dialog { margin:auto; border:1px solid var(--line); border-radius:8px; padding:0; width:min(520px, calc(100vw - 32px)); color:var(--text); }
   dialog::backdrop { background:rgba(0,0,0,.35); }
   form.dlg { padding:24px; display:flex; flex-direction:column; gap:6px; }
   form.dlg h2 { font-size:20px; margin-bottom:6px; }
@@ -92,7 +95,9 @@
           <option value="todo">할 일</option><option value="doing">진행 중</option><option value="done">완료</option>
         </select></div>
     </div>
-    <span class="lab">담당자 (여러 명 선택 가능)</span>
+    <span class="lab">메인 담당자 (1명)</span>
+    <select id="f-main" style="width:100%"></select>
+    <span class="lab">보조 담당자 (없어도 되고, 여러 명도 돼요)</span>
     <div class="people" id="people"></div>
     <div class="foot">
       <button type="button" class="ghost" id="btn-cancel">취소</button>
@@ -117,7 +122,7 @@ window.whenAuthed.then(function (me) {
 
   async function load() {
     var m = await db.from("profiles").select("id,name,email").eq("status", "approved").order("name");
-    var t = await db.from("tasks").select("*, task_assignees(user_id)").order("created_at", { ascending: false });
+    var t = await db.from("tasks").select("*, task_assignees(user_id, role)").order("created_at", { ascending: false });
     if (m.error || t.error) {
       var msg = (m.error || t.error).message;
       notice(/relation .* does not exist|schema cache|Could not find/i.test(msg)
@@ -164,7 +169,11 @@ window.whenAuthed.then(function (me) {
       if (t.description) card.appendChild(el("div", "desc", t.description));
       var meta = el("div", "meta");
       if (t.task_assignees.length) {
-        t.task_assignees.forEach(function (a) { meta.appendChild(el("span", "who" + (a.user_id === me.id ? " me" : ""), nameOf(a.user_id))); });
+        // 메인 담당자를 먼저, 보조 담당자를 뒤에
+        t.task_assignees.slice().sort(function (a, b) { return (a.role === "main" ? 0 : 1) - (b.role === "main" ? 0 : 1); }).forEach(function (a) {
+          var main = a.role === "main";
+          meta.appendChild(el("span", "who" + (main ? " main" : " sub") + (a.user_id === me.id ? " me" : ""), (main ? "메인 " : "보조 ") + nameOf(a.user_id)));
+        });
       } else { meta.appendChild(el("span", "by", "담당자 없음")); }
       if (t.due_date) { meta.appendChild(el("span", "due" + (t.status !== "done" && t.due_date < today() ? " late" : ""), "마감 " + t.due_date)); }
       meta.appendChild(el("span", "by", "등록 " + nameOf(t.created_by)));
@@ -193,14 +202,30 @@ window.whenAuthed.then(function (me) {
     $("f-desc").value = t ? t.description : "";
     $("f-due").value = t && t.due_date ? t.due_date : "";
     $("f-status").value = t ? t.status : "todo";
-    var chosen = t ? t.task_assignees.map(function (a) { return a.user_id; }) : [me.id];
+    // 메인 담당자 1명(선택) + 보조 담당자 0명 이상. 새 업무는 등록하는 사람이 메인으로 시작해요.
+    var mainRow = t ? t.task_assignees.filter(function (a) { return a.role === "main"; })[0] : null;
+    var mainId = t ? (mainRow ? mainRow.user_id : "") : me.id;
+    var subs = t ? t.task_assignees.filter(function (a) { return a.role !== "main"; }).map(function (a) { return a.user_id; }) : [];
+    var sel = $("f-main"); sel.textContent = "";
+    var none = document.createElement("option"); none.value = ""; none.textContent = "(정하지 않음)"; sel.appendChild(none);
+    members.forEach(function (m) { var o = document.createElement("option"); o.value = m.id; o.textContent = m.name || m.email; sel.appendChild(o); });
+    sel.value = mainId;
     var box = $("people"); box.textContent = "";
     members.forEach(function (m) {
-      var lab = document.createElement("label");
-      var cb = document.createElement("input"); cb.type = "checkbox"; cb.value = m.id; cb.checked = chosen.indexOf(m.id) >= 0;
+      var lab = document.createElement("label"); lab.dataset.uid = m.id;
+      var cb = document.createElement("input"); cb.type = "checkbox"; cb.value = m.id; cb.checked = subs.indexOf(m.id) >= 0;
       lab.appendChild(cb); lab.appendChild(document.createTextNode(m.name || m.email));
       box.appendChild(lab);
     });
+    // 메인으로 고른 사람은 보조 목록에서 빠져요(같은 사람이 둘 다일 수 없어요).
+    function syncSubs() {
+      Array.prototype.forEach.call(box.querySelectorAll("label"), function (lab) {
+        var isMain = sel.value && lab.dataset.uid === sel.value, cb = lab.querySelector("input");
+        if (isMain) cb.checked = false;
+        cb.disabled = !!isMain; lab.style.opacity = isMain ? ".45" : ""; lab.title = isMain ? "메인 담당자예요" : "";
+      });
+    }
+    sel.onchange = syncSubs; syncSubs();
     $("dlg").showModal();
     $("f-title").focus();
   }
@@ -216,7 +241,10 @@ window.whenAuthed.then(function (me) {
       title: $("f-title").value.trim(), description: $("f-desc").value.trim(),
       due_date: $("f-due").value || null, status: $("f-status").value
     };
-    var picked = Array.prototype.map.call($("people").querySelectorAll("input:checked"), function (c) { return c.value; });
+    var mainPick = $("f-main").value;
+    var subPick = Array.prototype.map.call($("people").querySelectorAll("input:checked"), function (c) { return c.value; }).filter(function (x) { return x !== mainPick; });
+    if (!mainPick && subPick.length) { btn.disabled = false; await sayBox("보조 담당자를 고르려면 먼저 메인 담당자를 골라 주세요."); return; }
+    var want = {}; subPick.forEach(function (u) { want[u] = "sub"; }); if (mainPick) want[mainPick] = "main";
     var id, err;
     if (editing) {
       id = editing.id;
@@ -227,11 +255,19 @@ window.whenAuthed.then(function (me) {
       err = c.error; id = c.data && c.data.id;
     }
     if (!err) {
-      var before = editing ? editing.task_assignees.map(function (a) { return a.user_id; }) : [];
-      var add = picked.filter(function (x) { return before.indexOf(x) < 0; });
-      var drop = before.filter(function (x) { return picked.indexOf(x) < 0; });
-      if (add.length) { var a = await db.from("task_assignees").insert(add.map(function (u) { return { task_id: id, user_id: u }; })); err = a.error; }
-      if (!err && drop.length) { var d = await db.from("task_assignees").delete().eq("task_id", id).in("user_id", drop); err = d.error; }
+      // 메인은 업무당 1명이라, 순서대로 처리해요: 빠지는 사람 삭제 → 메인에서 보조로 내리기 → 새 보조 추가 → 보조에서 메인으로 올리기 → 새 메인 추가
+      var have = {}; (editing ? editing.task_assignees : []).forEach(function (a) { have[a.user_id] = a.role === "main" ? "main" : "sub"; });
+      var drop = Object.keys(have).filter(function (u) { return !want[u]; });
+      var demote = Object.keys(have).filter(function (u) { return want[u] === "sub" && have[u] === "main"; });
+      var promote = Object.keys(have).filter(function (u) { return want[u] === "main" && have[u] === "sub"; });
+      var addSub = Object.keys(want).filter(function (u) { return !have[u] && want[u] === "sub"; });
+      var addMain = Object.keys(want).filter(function (u) { return !have[u] && want[u] === "main"; });
+      async function step(p) { if (!err) { var r = await p; err = r.error; } }
+      if (drop.length) await step(db.from("task_assignees").delete().eq("task_id", id).in("user_id", drop));
+      if (demote.length) await step(db.from("task_assignees").update({ role: "sub" }).eq("task_id", id).in("user_id", demote));
+      if (addSub.length) await step(db.from("task_assignees").insert(addSub.map(function (u) { return { task_id: id, user_id: u, role: "sub" }; })));
+      if (promote.length) await step(db.from("task_assignees").update({ role: "main" }).eq("task_id", id).in("user_id", promote));
+      if (addMain.length) await step(db.from("task_assignees").insert(addMain.map(function (u) { return { task_id: id, user_id: u, role: "main" }; })));
     }
     btn.disabled = false;
     if (err) { notice("저장하지 못했어요: " + err.message); }

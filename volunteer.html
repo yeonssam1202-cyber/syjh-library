@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>봉사 시간 · 작은도서관 운영위원회</title>
+<script src="guard.js?v=13"></script>
+<link rel="stylesheet" href="common.css?v=5">
+<style>
+  .monthbar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+  .monthbar .m { min-width:150px; text-align:center; font-weight:600; font-size:17px; }
+  table.vt { width:100%; border-collapse:collapse; font-size:15px; }
+  table.vt th { background:#f5f7fb; border:1px solid var(--line); padding:8px 6px; text-align:center; white-space:nowrap; }
+  table.vt td { border:1px solid var(--line); padding:8px 10px; vertical-align:middle; }
+  table.vt td.num { text-align:right; white-space:nowrap; }
+  .wrapx { overflow-x:auto; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+  .cert { background:#fff; border:1.5px solid #333; padding:34px 36px; margin-top:12px; }
+  .cert h2 { text-align:center; font-size:28px; letter-spacing:.3em; margin:0 0 22px; color:#111; }
+  .cert table { width:100%; border-collapse:collapse; margin-bottom:14px; }
+  .cert th { width:120px; background:#f3f3f3; border:1px solid #555; padding:9px; text-align:center; }
+  .cert td { border:1px solid #555; padding:9px 12px; }
+  .cert td.num { text-align:right; }
+  .cert .msg { text-align:center; font-size:17px; margin:22px 0 10px; }
+  .cert .date { text-align:center; margin:14px 0 6px; }
+  .cert .org { text-align:center; font-size:19px; font-weight:700; margin-top:20px; }
+  .cert .sig { text-align:center; margin-top:26px; font-size:16px; }
+  @page { size:A4; margin:18mm 16mm; }
+  @media print { body { background:#fff; padding:0; } .noprint, #app-bar { display:none !important; } .cert { border:1.5px solid #000; margin:0; } }
+  @media (max-width:640px) { .grid2 { grid-template-columns:1fr; } .cert { padding:18px 14px; } .cert h2 { font-size:22px; } .cert th { width:84px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="notice" class="notice noprint" role="alert"></div>
+  <div id="app"></div>
+</div>
+
+<dialog id="dlg">
+  <form class="dlg" id="form" method="dialog">
+    <h3 id="d-title">봉사 시간 확인</h3>
+    <div class="hint" id="d-sub"></div>
+    <div class="grid2">
+      <div><label class="l" for="v-h">확인할 시간 (시간)</label><input type="number" id="v-h" min="0" max="744" step="1" required></div>
+      <div><label class="l" for="v-m">분</label><input type="number" id="v-m" min="0" max="59" step="1" required></div>
+    </div>
+    <label class="l" for="v-note">조정 사유 (선택)</label>
+    <input type="text" id="v-note" maxlength="300" placeholder="예: 11월 12일 결근 3시간 제외">
+    <div class="bar" style="margin-bottom:0"><span class="sp"></span>
+      <button class="ghost" type="button" id="v-cancel">취소</button><button class="primary" type="submit" id="v-save">확인하기</button></div>
+  </form>
+</dialog>
+
+<script src="ui.js?v=1"></script>
+<script src="volunteer.js?v=2"></script>
+</body>
+</html>

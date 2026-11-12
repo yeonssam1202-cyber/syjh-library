@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>회의 일정 · 작은도서관 운영위원회</title>
+<script src="guard.js?v=13"></script>
+<link rel="stylesheet" href="common.css?v=5">
+<style>
+  .ev { background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px 18px; margin-bottom:12px; }
+  .ev.past { opacity:.85; }
+  .ev .t { font-size:18px; font-weight:700; }
+  .ev .s { color:var(--muted); font-size:15px; margin-top:2px; }
+  .ev .ag { white-space:pre-wrap; margin-top:8px; padding:10px 12px; background:#f7f9fc; border-radius:6px; font-size:15px; }
+  .rsvp { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+  .rsvp button { padding:10px 18px; }
+  .rsvp button.sel { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
+  .names { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+  @media (max-width:640px) { .grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="notice" class="notice noprint" role="alert"></div>
+  <div id="app"></div>
+</div>
+
+<dialog id="dlg">
+  <form class="dlg" id="form" method="dialog">
+    <h3 id="d-title">회의 일정 등록</h3>
+    <div class="grid2">
+      <div><label class="l" for="e-title">회의 이름</label><input type="text" id="e-title" maxlength="100" required></div>
+      <div><label class="l" for="e-kind">구분</label><select id="e-kind"><option>정기회의</option><option>임시회의</option></select></div>
+    </div>
+    <div class="grid2">
+      <div><label class="l" for="e-date">날짜</label><input type="date" id="e-date" required></div>
+      <div><label class="l" for="e-place">장소</label><input type="text" id="e-place" maxlength="100"></div>
+    </div>
+    <div class="grid2">
+      <div><label class="l" for="e-start">시작 시각</label><input type="time" id="e-start"></div>
+      <div><label class="l" for="e-end">종료 시각</label><input type="time" id="e-end"></div>
+    </div>
+    <label class="l" for="e-agenda">안건 (한 줄에 하나)</label>
+    <textarea id="e-agenda" maxlength="3000" style="min-height:110px"></textarea>
+    <label class="l" for="e-note">안내 (선택)</label>
+    <input type="text" id="e-note" maxlength="500" placeholder="예: 준비물, 주차 안내 등">
+    <div class="bar" style="margin-bottom:0"><span class="sp"></span>
+      <button class="ghost" type="button" id="e-cancel">취소</button><button class="primary" type="submit" id="e-save">저장</button></div>
+  </form>
+</dialog>
+
+<script src="ui.js?v=1"></script>
+<script src="schedule.js?v=1"></script>
+</body>
+</html>

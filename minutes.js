@@ -164,6 +164,21 @@ window.whenAuthed.then(function (me) {
       place: prev ? prev.place : '', author_name: me.name || '', observers: 0, agenda: '', summary: '', result: '', photos: [],
       attendees: members.filter(function (m) { return m.position !== '자원봉사'; }).map(function (m) { return { user_id: m.id, name: m.name, position: m.position || pos[m.id] || '운영위원', attended: true }; })
     };
+    // 회의 일정에서 시작한 경우: 일정의 날짜·시간·장소·안건을 채우고, 참석 응답이 '참석'인 위원만 참석으로 체크해요(고칠 수 있어요).
+    var evId = new URLSearchParams(location.search).get('event');
+    if (evId) {
+      var ev = await db.from('meeting_events').select('*').eq('id', evId).maybeSingle();
+      if (!ev.error && ev.data) {
+        var e = ev.data, rs = await db.from('meeting_rsvps').select('user_id,response').eq('event_id', evId), by = {};
+        if (!rs.error) rs.data.forEach(function (r) { by[r.user_id] = r.response; });
+        d.event_id = e.id; d.kind = e.kind; d.meeting_date = e.event_date;
+        d.start_time = e.start_time ? String(e.start_time).slice(0, 5) : d.start_time; d.end_time = e.end_time ? String(e.end_time).slice(0, 5) : d.end_time;
+        if (e.place) d.place = e.place;
+        d.agenda = e.agenda || '';
+        if (!rs.error && rs.data.length) d.attendees.forEach(function (a) { if (a.user_id) a.attended = by[a.user_id] === '참석'; });
+        d.fromEvent = '"' + e.title + '" 일정의 내용과 참석 응답을 불러왔어요. 참석 여부는 실제 참석에 맞게 고쳐 주세요.';
+      }
+    }
     sortAtt(d.attendees);
     return d;
   }
@@ -180,6 +195,7 @@ window.whenAuthed.then(function (me) {
     if (!d) d = await newDraft();
     document.title = (d.id ? '회의록 수정' : '새 회의록') + ' · 작은도서관 운영위원회';
     app.textContent = '';
+    if (d.fromEvent) notice('ok', d.fromEvent);
 
     function field(label, input, hint) { return h('div', null, h('label', { class: 'l', text: label }), input, hint ? h('div', { class: 'hint', text: hint }) : null); }
     function text(key, type, extra) {
@@ -303,7 +319,7 @@ window.whenAuthed.then(function (me) {
       var u = await db.from('meetings').update(fields).eq('id', id);
       if (u.error) throw u.error;
     } else {
-      var c = await db.from('meetings').insert(fields).select('id').single();
+      var c = await db.from('meetings').insert(Object.assign({ event_id: d.event_id || null }, fields)).select('id').single();
       if (c.error) throw c.error;
       id = d.id = c.data.id;
     }

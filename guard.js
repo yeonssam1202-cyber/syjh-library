@@ -7,6 +7,15 @@
   hide.textContent = "html{visibility:hidden!important}";
   document.head.appendChild(hide);
 
+  // 폰 홈 화면에 추가할 때 쓰는 아이콘과 이름
+  (function () {
+    function tag(name, attrs) { var e = document.createElement(name); Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); }); document.head.appendChild(e); }
+    tag("link", { rel: "manifest", href: base + "manifest.webmanifest" });
+    tag("link", { rel: "apple-touch-icon", href: base + "apple-touch-icon.png" });
+    tag("meta", { name: "theme-color", content: "#14305c" });
+    tag("meta", { name: "apple-mobile-web-app-capable", content: "yes" });
+    tag("meta", { name: "apple-mobile-web-app-title", content: "작은도서관" });
+  })();
   function load(src) {
     return new Promise(function (ok, fail) {
       var s = document.createElement("script");
@@ -24,8 +33,10 @@
     bar.id = "app-bar";
     bar.style.cssText = "position:fixed;top:10px;right:14px;max-width:calc(100vw - 28px);z-index:100000;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;" +
       "background:#fff;border:1px solid #ddd;border-radius:18px;padding:6px 8px 6px 14px;font:13px/1.2 -apple-system,'Malgun Gothic',sans-serif;color:#201f1d;box-shadow:0 1px 6px rgba(0,0,0,.08)";
-    var links = [["홈", "app.html"], ["공지", "notices.html"], ["업무 목록", "tasks.html"], ["회의록", "minutes.html"], ["예산·지출", "budget.html"], ["감사 보고서", "audit.html"],
-      ["근무표", "shifts.html"], ["회칙·세칙", "rules.html"], ["자료실", "documents.html"]];
+    var links = [["홈", "home.html"], ["공지", "notices.html"], ["회의 일정", "schedule.html"], ["회의록", "minutes.html"], ["업무 목록", "tasks.html"], ["근무표", "shifts.html"]];
+    if (p.isVolunteer || p.can("shifts_approve")) links.push(["봉사 시간", "volunteer.html"]);
+    links.push(["예산·지출", "budget.html"], ["감사 보고서", "audit.html"], ["회칙·세칙", "rules.html"], ["자료실", "documents.html"], ["내 정보", "myinfo.html"]);
+    if (p.can("export_basic")) links.push(["내보내기", "export.html"]);
     if (p.role === "admin") links.push(["회원 승인", "members.html"]);
     var box = document.createElement("div");
     box.id = "bar-links";

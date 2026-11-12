@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>홈 · 작은도서관 운영위원회</title>
+<script src="guard.js?v=13"></script>
+<link rel="stylesheet" href="common.css?v=5">
+<style>
+  .hero { display:flex; align-items:center; gap:18px; flex-wrap:wrap; margin:4px 0 16px; }
+  .hero img { height:54px; width:auto; display:block; }
+  .hero .hi { font-size:22px; font-weight:700; }
+  .hero .sub { color:var(--muted); font-size:15px; }
+  .todo { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+  .todo a { display:flex; align-items:center; gap:10px; background:#fff; border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:8px; padding:12px 14px; color:inherit; text-decoration:none; font-size:16px; }
+  .todo a:hover { background:#f7f9fc; }
+  .todo a .go { margin-left:auto; color:var(--accent-700); font-weight:600; white-space:nowrap; }
+  .todo a.warn { border-left-color:var(--err); }
+  .allclear { background:#e8f3ea; color:var(--ok); border-radius:8px; padding:12px 14px; margin-bottom:16px; }
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
+  .card2 { background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px 18px; }
+  .card2 h2 { font-size:17px; color:var(--navy); margin-bottom:8px; display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .card2 h2 a { font-size:14px; font-weight:500; color:var(--accent-700); text-decoration:none; }
+  .row { padding:9px 0; border-top:1px solid var(--line); }
+  .row:first-of-type { border-top:0; }
+  .row .t { font-weight:600; }
+  .row .s { color:var(--muted); font-size:14px; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .rsvp button { padding:9px 16px; }
+  .rsvp button.sel { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
+  .nbadge { display:inline-block; background:#fde8e4; color:var(--err); border-radius:999px; padding:0 8px; font-size:12px; font-weight:700; margin-left:6px; }
+  @media (max-width:760px) { .cols { grid-template-columns:1fr; } .hero img { height:44px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="notice" class="notice noprint" role="alert"></div>
+  <div id="app"></div>
+</div>
+<script src="ui.js?v=1"></script>
+<script src="home.js?v=1"></script>
+</body>
+</html>

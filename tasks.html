@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>업무 목록 · 작은도서관 운영위원회</title>
-<script src="guard.js?v=12"></script>
+<script src="guard.js?v=14"></script>
 <style>
   :root { --bg:#ffffff; --text:#201f1d; --muted:#6c6b69; --accent:#1f4b8f; --accent-700:#14305c; --line:#dde3ec; --err:#a8321f; --card:#fff; }
   * { box-sizing:border-box; margin:0; }
@@ -109,7 +109,7 @@
 <script>
 window.whenAuthed.then(function (me) {
   var db = Auth.client;
-  var STATUS = { todo: "할 일", doing: "진행 중", done: "완료" };
+  var STATUS = States.labels("task");
   var $ = function (id) { return document.getElementById(id); };
   var members = [], tasks = [], filter = "all", editing = null;
   var nameOf = function (id) { var m = members.find(function (x) { return x.id === id; }); return m ? (m.name || m.email) : "알 수 없음"; };

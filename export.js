@@ -82,7 +82,7 @@ window.whenAuthed.then(function (me) {
     var at = await all('meeting_attendees'); var sg = await all('meeting_signatures', function (q) { return q.select('attendee_id'); });
     var signed = {}; sg.forEach(function (s) { signed[s.attendee_id] = 1; });
     var mt = {}; ms.forEach(function (m) { mt[m.id] = m; });
-    var ST = { draft: '작성 중', signing: '서명 받는 중', closed: '마감' };
+    var ST = States.labels('meeting');
     save([
       { name: '회의록', cols: ['차수', '구분', '날짜', '시작', '종료', '장소', '상태', '재적', '참석', '안건', '회의 내용', '회의 결과', '작성자'], rows: ms.map(function (m) { var a = at.filter(function (x) { return x.meeting_id === m.id; }); return { '차수': m.seq, '구분': m.kind, '날짜': m.meeting_date, '시작': t(m.start_time).slice(0, 5), '종료': t(m.end_time).slice(0, 5), '장소': m.place, '상태': ST[m.status], '재적': a.length, '참석': a.filter(function (x) { return x.attended; }).length, '안건': m.agenda, '회의 내용': m.summary, '회의 결과': m.result, '작성자': m.author_name }; }) },
       { name: '참석자', cols: ['차수', '날짜', '직급', '이름', '참석', '서명'], rows: at.filter(function (x) { return mt[x.meeting_id]; }).sort(function (a, b) { return mt[a.meeting_id].meeting_date < mt[b.meeting_id].meeting_date ? -1 : 1; }).map(function (x) { return { '차수': mt[x.meeting_id].seq, '날짜': mt[x.meeting_id].meeting_date, '직급': x.position, '이름': x.name, '참석': x.attended ? '참석' : '불참', '서명': x.attended ? (signed[x.id] ? '서명함' : '') : '' }; }) }
@@ -93,7 +93,7 @@ window.whenAuthed.then(function (me) {
     var ns = await all('notices', function (q) { return q.order('created_at'); });
     var ts = await all('tasks', function (q) { return q.select('*, task_assignees(user_id,role)').order('created_at'); });
     var pr = await all('profiles'); var nm = {}; pr.forEach(function (p) { nm[p.id] = p.name || p.email; });
-    var ST = { todo: '할 일', doing: '진행 중', done: '완료' };
+    var ST = States.labels('task');
     save([
       { name: '공지', cols: ['작성일', '제목', '작성자', '고정', '내용'], rows: ns.map(function (n) { return { '작성일': n.created_at.slice(0, 10), '제목': n.title, '작성자': n.created_by_name, '고정': n.pinned ? '고정' : '', '내용': n.body }; }) },
       { name: '업무 목록', cols: ['업무', '상태', '마감일', '메인 담당', '보조 담당', '설명', '등록자'], rows: ts.map(function (x) { return { '업무': x.title, '상태': ST[x.status] || x.status, '마감일': x.due_date || '', '메인 담당': x.task_assignees.filter(function (a) { return a.role === 'main'; }).map(function (a) { return nm[a.user_id] || ''; }).join(', '), '보조 담당': x.task_assignees.filter(function (a) { return a.role !== 'main'; }).map(function (a) { return nm[a.user_id] || ''; }).join(', '), '설명': x.description, '등록자': nm[x.created_by] || '' }; }) }
@@ -104,7 +104,7 @@ window.whenAuthed.then(function (me) {
   if (isAdmin) {
     cards.push(card('위원 명단 (관리자 전용)', '이름, 이메일, 직책, 권한, 상태, 가입일이 들어 있어요. 개인정보이니 조심해서 다뤄 주세요.', null, '엑셀 받기', async function () {
       var pr = await all('profiles', function (q) { return q.order('created_at'); });
-      var ST = { approved: '승인됨', pending: '승인 대기', rejected: '거절됨' };
+      var ST = States.labels('profile');
       save([{ name: '위원 명단', cols: ['이름', '이메일', '직책', '관리자', '근무 담당', '상태', '가입일'], rows: pr.map(function (p) { return { '이름': p.name, '이메일': p.email, '직책': p.position || '', '관리자': p.role === 'admin' ? '관리자' : '', '근무 담당': p.shift_manager ? '담당' : '', '상태': ST[p.status] || p.status, '가입일': (p.created_at || '').slice(0, 10) }; }) }], '위원명단_' + STAMP + '.xlsx');
     }, true));
 

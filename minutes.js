@@ -10,10 +10,10 @@ window.whenAuthed.then(function (me) {
   var db = Auth.client;
   var BUCKET = 'meeting-photos';
   var POS = ['위원장', '부위원장', '총무', '감사', '운영위원', '자원봉사'];
-  var STATUS = { draft: '작성 중', signing: '서명 받는 중', closed: '마감' };
+  var STATUS = States.labels('meeting');   // 라벨은 states.js 한 곳에서 관리
   var $ = function (id) { return document.getElementById(id); };
   var app = $('app');
-  var members = [];
+  Unsaved.watch(app);
 
   // ---------- 작은 도우미 ----------
   function add(e, c) {
@@ -84,7 +84,10 @@ window.whenAuthed.then(function (me) {
   function say(msg) { return ask(msg, '확인', null); }
 
   // ---------- 이동 ----------
-  function nav(search) { history.pushState(null, '', 'minutes.html' + (search || '')); route(); window.scrollTo(0, 0); }
+  async function nav(search) {
+    if (!(await Unsaved.confirmLeave())) return;      // 저장 안 한 내용이 있으면 한 번 물어봐요
+    history.pushState(null, '', 'minutes.html' + (search || '')); route(); window.scrollTo(0, 0);
+  }
   function link(search, props) {
     var a = h('a', Object.assign({ href: 'minutes.html' + search }, props));
     for (var i = 2; i < arguments.length; i++) add(a, arguments[i]);
@@ -95,6 +98,8 @@ window.whenAuthed.then(function (me) {
 
   async function route() {
     notice();
+    Unsaved.clear();
+    app.textContent = ''; app.appendChild(loadingBox());      // 불러오는 동안 '불러오는 중…' 표시
     var p = new URLSearchParams(location.search);
     try {
       if (p.has('new')) return await showEditor(null);
@@ -140,7 +145,7 @@ window.whenAuthed.then(function (me) {
     if (!r.data.length) list.appendChild(h('div', { class: 'empty', text: '아직 회의록이 없어요. 첫 회의록을 남겨 보세요.' }));
     r.data.forEach(function (m) {
       var present = m.meeting_attendees.filter(function (a) { return a.attended; }).length;
-      var badges = h('div', { class: 'badges' }, h('span', { class: 'badge ' + m.status, text: STATUS[m.status] }));
+      var badges = h('div', { class: 'badges' }, h('span', { class: 'badge ' + m.status, 'data-machine': 'meeting', 'data-state': m.status, text: STATUS[m.status] }));
       if (m.status !== 'draft') badges.appendChild(h('span', { class: 'badge', text: '서명 ' + m.meeting_signatures.length + '/' + present + '명' }));
       else if (present) badges.appendChild(h('span', { class: 'badge', text: '검토 ' + m.meeting_reviews.length + '/' + present + '명' }));
       list.appendChild(link('?id=' + m.id, { class: 'card' },
@@ -305,6 +310,7 @@ window.whenAuthed.then(function (me) {
     app.appendChild(h('div', { class: 'bar' },
       d.id ? h('button', { class: 'ghost danger', text: '삭제', onclick: function () { removeMeeting(d.id, d.photos); } }) : null,
       h('span', { class: 'sp' }), saveBtn, signBtn));
+    Unsaved.start();      // 여기서부터 고친 내용이 있으면 나갈 때 물어봐요
   }
 
   async function persist(d) {
@@ -354,6 +360,7 @@ window.whenAuthed.then(function (me) {
       if (photos && photos.length) await db.storage.from(BUCKET).remove(photos.map(function (p) { return p.path; }));
       var r = await db.from('meetings').delete().eq('id', id);
       if (r.error) throw r.error;
+      Unsaved.clear();
       nav('');
       notice('ok', '삭제했어요.');
     } catch (e) { fail(e); }
@@ -495,13 +502,16 @@ window.whenAuthed.then(function (me) {
         if (await ask((left > 0 ? '아직 서명하지 않은 위원이 ' + left + '명 있어요. ' : '') + '서명을 마감할까요? 마감하면 더는 서명할 수 없어요.', '마감')) setStatus('closed', '서명을 마감했어요.')();
       } }));
     }
+    if (m.status === 'closed' && me.role === 'admin') acts.appendChild(h('button', { class: 'ghost', text: '마감 취소 (서명 더 받기)', onclick: async function () {
+      if (await ask('마감을 취소하면 서명을 더 받을 수 있어요. 회의록 내용은 계속 잠겨 있고, 이미 한 서명은 그대로예요. 계속할까요?', '마감 취소')) setStatus('signing', '마감을 취소했어요. 서명을 더 받을 수 있어요.')();
+    } }));
     if (!me.isVolunteer) acts.appendChild(h('button', { class: 'ghost', text: '인쇄 · PDF 저장', onclick: function () { window.print(); } }));   // 자원봉사는 인쇄 불가
     if (me.role === 'admin' || (m.author_id === me.id && m.status === 'draft'))
       acts.appendChild(h('button', { class: 'ghost danger', text: '삭제', onclick: function () { removeMeeting(m.id, m.meeting_photos); } }));
 
     var head = h('div', { class: 'top noprint' },
       h('div', null, h('div', { class: 'mark', text: '작은도서관 운영위원회' }), h('h1', { text: '제' + m.seq + '차 ' + m.kind + ' 회의록' }),
-        h('div', { class: 'badges' }, h('span', { class: 'badge ' + m.status, text: STATUS[m.status] }),
+        h('div', { class: 'badges' }, h('span', { class: 'badge ' + m.status, 'data-machine': 'meeting', 'data-state': m.status, text: STATUS[m.status] }),
           m.status !== 'draft' ? h('span', { class: 'badge', text: '서명 ' + m.meeting_signatures.length + '/' + c.present + '명' }) : null)));
 
     // 서명 칸
@@ -592,16 +602,16 @@ window.whenAuthed.then(function (me) {
                        isStale(a) ? h('span', { class: 'badge signing', text: '수정됨' }) : null)
                      : h('span', { class: 'wait', text: isDraft ? '검토 전' : '검토 기록 없음' });
         var row = h('div', { class: 'rv' }, h('div', { class: 'nm', text: a.position + ' ' + a.name + (a.user_id ? '' : ' (계정 없음)') }), st);
-        if (canDo && !r) row.appendChild(h('button', { class: 'primary', type: 'button', text: a.user_id ? '검토 완료' : '대신 확인', onclick: async function () {
+        if (canDo && !r) row.appendChild(h('button', { class: 'primary', type: 'button', text: a.user_id ? '검토 완료' : '대신 확인', onclick: actOnce(async function () {
           var x = await db.from('meeting_reviews').insert({ attendee_id: a.id, meeting_id: m.id });
           if (x.error) { fail(x.error); return; }
           await route(); notice('ok', '검토 완료로 기록했어요.');
-        } }));
-        if (canDo && r) row.appendChild(h('button', { class: 'linkbtn', type: 'button', text: '취소', onclick: async function () {
+        }) }));
+        if (canDo && r) row.appendChild(h('button', { class: 'linkbtn', type: 'button', text: '취소', onclick: actOnce(async function () {
           var x = await db.from('meeting_reviews').delete().eq('attendee_id', a.id);
           if (x.error) { fail(x.error); return; }
           await route();
-        } }));
+        }) }));
         reviewPanel.appendChild(row);
       });
       if (attending.some(isStale)) reviewPanel.appendChild(h('div', { class: 'hint', text: '"수정됨"은 그 위원이 검토한 뒤에 회의록 내용이 바뀌었다는 뜻이에요. 아래 수정 이력을 확인해 주세요.' }));
@@ -650,16 +660,16 @@ window.whenAuthed.then(function (me) {
           diffView(s.base_text, s.new_text));
         var bar = h('div', { class: 'bar', style: 'margin:8px 0 0' });
         if (manage) {
-          bar.appendChild(h('button', { class: 'primary', type: 'button', text: '반영', onclick: async function () {
+          bar.appendChild(h('button', { class: 'primary', type: 'button', text: '반영', onclick: actOnce(async function () {
             var curText = String(m[s.field] || '');
             if (curText !== s.base_text && !(await ask('이 제안을 낸 뒤에 ' + FIELD[s.field] + '이(가) 이미 바뀌었어요. 반영하면 제안한 글로 통째로 바뀌어요. 그래도 반영할까요?', '반영'))) return;
-            decide(s, 'accept', '반영했어요. 수정 이력에 기록돼요.');
-          } }));
-          bar.appendChild(h('button', { class: 'ghost', type: 'button', text: '거절', onclick: async function () {
-            if (await ask(s.proposed_by_name + ' 님의 제안을 거절할까요?', '거절')) decide(s, 'reject', '거절했어요.');
-          } }));
+            await decide(s, 'accept', '반영했어요. 수정 이력에 기록돼요.');
+          }) }));
+          bar.appendChild(h('button', { class: 'ghost', type: 'button', text: '거절', onclick: actOnce(async function () {
+            if (await ask(s.proposed_by_name + ' 님의 제안을 거절할까요?', '거절')) await decide(s, 'reject', '거절했어요.');
+          }) }));
         }
-        if (s.proposed_by === me.id) bar.appendChild(h('button', { class: 'linkbtn', type: 'button', text: '제안 취소', onclick: function () { decide(s, 'withdraw', '제안을 취소했어요.'); } }));
+        if (s.proposed_by === me.id) bar.appendChild(h('button', { class: 'linkbtn', type: 'button', text: '제안 취소', onclick: actOnce(function () { return decide(s, 'withdraw', '제안을 취소했어요.'); }) }));
         if (bar.childNodes.length) item.appendChild(bar);
         sugPanel.appendChild(item);
       });

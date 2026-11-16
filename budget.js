@@ -300,5 +300,6 @@ window.whenAuthed.then(function (me) {
     btn.disabled = false;
   };
 
+  app.appendChild(loadingBox());
   reload();
 });

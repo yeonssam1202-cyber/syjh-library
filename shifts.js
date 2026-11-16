@@ -119,7 +119,7 @@ window.whenAuthed.then(function (me) {
     return r.kind === 'cancel' ? from + ' 근무 취소' : from + ' → ' + fmtShort(r.new_date) + ' ' + r.new_slot + ' 로 변경';
   }
   function fmtShort(s) { var d = U.parseYmd(s); return (d.getMonth() + 1) + '월 ' + d.getDate() + '일(' + DAYS[(d.getDay() + 6) % 7] + ')'; }
-  var RSTAT = { pending: '승인 대기', approved: '승인됨', rejected: '거절됨', withdrawn: '요청 취소' };
+  var RSTAT = States.labels('shiftRequest');
   async function decide(r, decision, okMsg) {
     var x = await db.rpc('decide_shift_change', { rid: r.id, decision: decision });
     if (x.error) { U.fail(x.error); return; }
@@ -146,8 +146,8 @@ window.whenAuthed.then(function (me) {
           h('div', null, h('div', { style: 'font-weight:600', text: r.requested_by_name + ' · ' + reqText(r) }),
             h('div', { class: 'nt', text: '요청 ' + fmtDT2(r.created_at) + (r.reason ? ' · 이유: ' + r.reason : '') })),
           h('div', { class: 'bar', style: 'margin:0' },
-            h('button', { class: 'primary', type: 'button', text: '승인', onclick: function () { decide(r, 'approve', '승인했어요. 근무표를 바꿨어요.'); } }),
-            h('button', { class: 'ghost', type: 'button', text: '거절', onclick: async function () { if (await askBox(r.requested_by_name + ' 님의 변경 요청을 거절할까요?', '거절')) decide(r, 'reject', '거절했어요.'); } }))));
+            h('button', { class: 'primary', type: 'button', text: '승인', onclick: actOnce(function () { return decide(r, 'approve', '승인했어요. 근무표를 바꿨어요.'); }) }),
+            h('button', { class: 'ghost', type: 'button', text: '거절', onclick: actOnce(async function () { if (await askBox(r.requested_by_name + ' 님의 변경 요청을 거절할까요?', '거절')) await decide(r, 'reject', '거절했어요.'); }) }))));
       });
       if (recent.length) {
         var det = h('details', { style: 'margin-top:8px' }, h('summary', { style: 'cursor:pointer;color:var(--muted)', text: '최근 2주 처리 결과 ' + recent.length + '건' }));
@@ -168,7 +168,7 @@ window.whenAuthed.then(function (me) {
       mine.forEach(function (r) {
         q.appendChild(h('div', { class: 'shiftrow', style: 'flex-wrap:wrap' },
           h('div', null, h('div', { text: reqText(r) }), h('div', { class: 'nt', text: resultLine(r) + (r.reason ? ' · 이유: ' + r.reason : '') })),
-          r.status === 'pending' ? h('button', { class: 'ghost', type: 'button', text: '요청 취소', onclick: function () { decide(r, 'withdraw', '요청을 취소했어요.'); } }) : null));
+          r.status === 'pending' ? h('button', { class: 'ghost', type: 'button', text: '요청 취소', onclick: actOnce(function () { return decide(r, 'withdraw', '요청을 취소했어요.'); }) }) : null));
       });
       app.appendChild(q);
     }
@@ -255,7 +255,7 @@ window.whenAuthed.then(function (me) {
         h('div', null, h('span', { class: s.user_id === me.id ? 'me' : '', style: s.user_id === me.id ? 'font-weight:700;color:var(--accent-700)' : '', text: s.name }), s.note ? h('div', { class: 'nt', text: s.note }) : null),
         canRemove(s) ? h('button', { class: 'ghost danger', type: 'button', text: '빼기', onclick: function () { removeShift(s); } })
           : (s.user_id === me.id && isVol
-              ? (pendingFor(s) ? h('span', { class: 'nt', text: '변경 요청 중' }) : h('button', { class: 'ghost', type: 'button', text: '변경 요청', onclick: function () { openChangeRequest(s); } }))
+              ? (pendingFor(s) ? h('span', { class: 'nt', text: '변경 요청 중' }) : s.shift_date < U.today() ? h('span', { class: 'nt', text: '지난 근무예요' }) : h('button', { class: 'ghost', type: 'button', text: '변경 요청', onclick: function () { openChangeRequest(s); } }))
               : null)));
     });
     $('c-others').style.display = isVol ? 'none' : '';
@@ -315,5 +315,6 @@ window.whenAuthed.then(function (me) {
     await loadAll(); render(); U.notice('ok', '설정을 저장했어요.');
   };
 
+  app.appendChild(loadingBox());
   loadAll().then(render).catch(U.fail);
 });

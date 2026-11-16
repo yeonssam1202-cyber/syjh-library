@@ -2,11 +2,12 @@
 window.whenAuthed.then(function (me) {
   'use strict';
   var db = Auth.client, U = UI, h = U.h, $ = U.$, app = $('app');
+  Unsaved.watch(app);
   var canWrite = me.can('audit_write'), isAdmin = me.role === 'admin';
   var FEE_PER_PERSON = 5000, FEE_MAX_PER_MONTH = 2;
   var OPINIONS = ['적정', '일부 보완 필요', '부적정'];
   var RESULTS = ['적정', '보완 필요', '부적정'];
-  var STATUS = { draft: '작성 중', submitted: '제출됨' };
+  var STATUS = States.labels('audit');
 
   // 자원봉사는 인쇄·PDF 저장을 할 수 없어요(회의록과 같은 규칙).
   if (me.isVolunteer) { var nop = document.createElement('style'); nop.textContent = '@media print { body { display: none !important; } }'; document.head.appendChild(nop); }
@@ -16,10 +17,15 @@ window.whenAuthed.then(function (me) {
   function title(r) { return r.fiscal_year + '년 감사 보고서'; }
 
   // ---------- 이동 ----------
-  function nav(search) { history.pushState(null, '', 'audit.html' + (search || '')); route(); window.scrollTo(0, 0); }
+  async function nav(search) {
+    if (!(await Unsaved.confirmLeave())) return;      // 저장 안 한 내용이 있으면 한 번 물어봐요
+    history.pushState(null, '', 'audit.html' + (search || '')); route(); window.scrollTo(0, 0);
+  }
   window.addEventListener('popstate', route);
   async function route() {
     U.notice();
+    Unsaved.clear();
+    app.textContent = ''; app.appendChild(loadingBox());
     var p = new URLSearchParams(location.search);
     try {
       if (p.has('new')) return showEditor(newDraft());
@@ -46,7 +52,7 @@ window.whenAuthed.then(function (me) {
       var a = h('a', { class: 'rcard', href: 'audit.html?id=' + x.id },
         h('div', { class: 't', text: title(x) }),
         h('div', { class: 's', text: '감사 기간 ' + U.fmtDate(x.period_start) + ' ~ ' + U.fmtDate(x.period_end) + ' · 감사일 ' + U.fmtDate(x.audit_date) + ' · 작성 ' + (x.created_by_name || '') }),
-        h('div', { class: 'badges' }, h('span', { class: 'badge ' + (x.status === 'submitted' ? 'ok2' : ''), text: STATUS[x.status] }),
+        h('div', { class: 'badges' }, h('span', { class: 'badge ' + (x.status === 'submitted' ? 'ok2' : ''), 'data-machine': 'audit', 'data-state': x.status, text: STATUS[x.status] }),
           x.opinion ? h('span', { class: 'badge ' + opClass(x.opinion), text: '감사 의견: ' + x.opinion }) : null));
       a.onclick = function (e) { e.preventDefault(); nav('?id=' + x.id); };
       list.appendChild(a);
@@ -211,6 +217,7 @@ window.whenAuthed.then(function (me) {
     app.appendChild(h('div', { class: 'bar' },
       d.id ? h('button', { class: 'ghost danger', text: '삭제', onclick: function () { removeReport(d.id); } }) : null,
       h('span', { class: 'sp' }), saveBtn, subBtn));
+    Unsaved.start();
 
     function fields() {
       return { fiscal_year: parseInt(d.fiscal_year, 10), period_start: d.period_start, period_end: d.period_end, audit_date: d.audit_date,
@@ -245,6 +252,7 @@ window.whenAuthed.then(function (me) {
     if (!(await askBox('이 감사 보고서를 삭제할까요? 되돌릴 수 없어요.', '삭제'))) return;
     var r = await db.from('audit_reports').delete().eq('id', id);
     if (r.error) { U.fail(r.error); return; }
+    Unsaved.clear();
     nav(''); U.notice('ok', '삭제했어요.');
   }
 
@@ -271,7 +279,7 @@ window.whenAuthed.then(function (me) {
 
     app.appendChild(h('div', { class: 'top noprint' },
       h('div', null, h('div', { class: 'mark', text: '작은도서관 운영위원회' }), h('h1', { text: title(x) }),
-        h('div', { class: 'badges' }, h('span', { class: 'badge ' + (x.status === 'submitted' ? 'ok2' : ''), text: STATUS[x.status] }),
+        h('div', { class: 'badges' }, h('span', { class: 'badge ' + (x.status === 'submitted' ? 'ok2' : ''), 'data-machine': 'audit', 'data-state': x.status, text: STATUS[x.status] }),
           x.opinion ? h('span', { class: 'badge ' + opClass(x.opinion), text: '감사 의견: ' + x.opinion }) : null))));
     app.appendChild(acts);
 

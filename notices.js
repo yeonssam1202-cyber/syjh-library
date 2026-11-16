@@ -120,5 +120,6 @@ window.whenAuthed.then(function (me) {
     try { await load(); render(); U.notice('ok', '삭제했어요.'); } catch (x) { U.fail(x); }
   }
 
+  app.appendChild(loadingBox());
   load().then(render).catch(U.fail);
 });

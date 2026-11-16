@@ -54,7 +54,7 @@ window.whenAuthed.then(function (me) {
     if (!me.isVolunteer && !isPast) {
       var box = h('div', { class: 'rsvp noprint' }, h('span', { style: 'font-weight:600', text: '내 응답' }));
       ['참석', '불참', '미정'].forEach(function (r) {
-        box.appendChild(h('button', { class: 'ghost' + (mineR && mineR.response === r ? ' sel' : ''), type: 'button', text: r, onclick: function () { respond(e, r, mineR); } }));
+        box.appendChild(h('button', { class: 'ghost' + (mineR && mineR.response === r ? ' sel' : ''), type: 'button', text: r, onclick: actOnce(function () { return respond(e, r, mineR); }) }));
       });
       if (!mineR) box.appendChild(h('span', { class: 'hint', text: '아직 응답하지 않았어요' }));
       c.appendChild(box);
@@ -122,5 +122,6 @@ window.whenAuthed.then(function (me) {
     await reload(); U.notice('ok', '삭제했어요.');
   }
 
+  app.appendChild(loadingBox());
   load().then(render).catch(U.fail);
 });

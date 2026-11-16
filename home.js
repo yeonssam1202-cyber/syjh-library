@@ -14,6 +14,7 @@ window.whenAuthed.then(async function (me) {
   var todo = [];            // {text, href, warn}
   var weekEnd = U.ymd(new Date(Date.now() + 14 * 86400000));
 
+  app.appendChild(loadingBox());      // 불러오는 동안 표시
   var res = await Promise.all([
     safe(db.from('notices').select('id,title,pinned,created_by,created_by_name,created_at').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(4), []),
     safe(db.from('notice_reads').select('notice_id').eq('user_id', me.id), []),
@@ -162,11 +163,11 @@ window.whenAuthed.then(async function (me) {
       var mine2 = rsvps.filter(function (r) { return r.user_id === me.id; })[0];
       var box = h('div', { class: 'bar rsvp', style: 'margin:8px 0 0' }, h('span', { class: 'hint', text: '내 응답: ' }));
       ['참석', '불참', '미정'].forEach(function (r) {
-        box.appendChild(h('button', { class: 'ghost' + (mine2 && mine2.response === r ? ' sel' : ''), type: 'button', text: r, onclick: async function () {
+        box.appendChild(h('button', { class: 'ghost' + (mine2 && mine2.response === r ? ' sel' : ''), type: 'button', text: r, onclick: actOnce(async function () {
           var x = await db.from('meeting_rsvps').upsert({ event_id: ev.id, user_id: me.id, response: r }, { onConflict: 'event_id,user_id' });
           if (x.error) { U.fail(x.error); return; }
           U.notice('ok', '"' + r + '"으로 응답했어요.'); setTimeout(function () { location.reload(); }, 600);
-        } }));
+        }) }));
       });
       next.appendChild(box);
     }

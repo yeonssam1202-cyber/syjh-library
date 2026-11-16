@@ -162,5 +162,6 @@ window.whenAuthed.then(function (me) {
   };
 
   async function reload() { try { await load(); render(); } catch (e) { U.fail(e); } }
+  app.appendChild(loadingBox());
   reload();
 });

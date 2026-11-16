@@ -50,6 +50,7 @@ window.whenAuthed.then(function (me) {
             return h('tr', null, h('td', { text: v.name }), h('td', { class: 'num', text: c.n + '회' }), h('td', { class: 'num', text: hrs(c.done) }), h('td', { class: 'num', text: c.plan ? hrs(c.plan) : '-' }),
               h('td', { class: 'num', text: cf ? hrs(cf.confirmed_minutes) : '-' }),
               h('td', null, cf ? h('span', { class: 'badge gold', text: '확인됨 · ' + cf.confirmed_by_name }) : h('span', { class: 'badge', text: '미확인' }),
+                cf && cf.auto_minutes !== c.done ? h('div', { class: 'hint', style: 'color:var(--err)', text: '⚠ 확인한 뒤에 근무가 바뀌었어요 (확인 당시 ' + hrs(cf.auto_minutes) + ' → 지금 ' + hrs(c.done) + '). 다시 확인해 주세요.' }) : null,
                 cf && cf.note ? h('div', { class: 'hint', text: cf.note }) : null),
               h('td', null, h('div', { class: 'bar', style: 'margin:0' },
                 h('button', { class: 'primary', type: 'button', text: cf ? '다시 확인' : '확인하기', onclick: function () { openConfirm(v, c, cf); } }),
@@ -65,6 +66,7 @@ window.whenAuthed.then(function (me) {
       app.appendChild(h('div', { class: 'panel noprint' }, h('h2', { text: monthLabel(ym) + ' 내 봉사 시간' }),
         h('div', { text: '지난 근무 ' + hrs(c.done) + (c.plan ? ' · 앞으로 예정 ' + hrs(c.plan) : '') + ' (근무 ' + c.n + '회)' }),
         h('div', { style: 'margin-top:6px' }, cf ? h('span', { class: 'badge gold', text: '확인됨 ' + hrs(cf.confirmed_minutes) + ' · ' + cf.confirmed_by_name }) : h('span', { class: 'badge', text: '아직 임원이 확인하지 않았어요' }),
+          cf && cf.auto_minutes !== c.done ? h('div', { class: 'hint', style: 'color:var(--err)', text: '확인 이후 근무가 바뀌었어요. 임원이 다시 확인하면 확인서에 반영돼요.' }) : null,
           cf && cf.note ? h('div', { class: 'hint', text: '조정 사유: ' + cf.note }) : null),
         h('div', { class: 'bar' }, h('button', { class: 'primary', type: 'button', text: '봉사 활동 확인서 만들기', onclick: function () { showCert({ id: me.id, name: me.name || me.email }); } }))));
     }
@@ -138,5 +140,6 @@ window.whenAuthed.then(function (me) {
     box.appendChild(panel); box.appendChild(out); draw(); box.scrollIntoView({ behavior: 'smooth' });
   }
 
+  app.appendChild(loadingBox());
   load().then(render).catch(U.fail);
 });

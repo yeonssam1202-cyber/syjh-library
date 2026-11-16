@@ -131,6 +131,7 @@
     var p = await Auth.getProfile();
     if (!p) return;
     if (p.status === "approved") { location.replace("home.html"); return; }
+    if (p.status === "error") { show("err", "연결이 불안정해서 확인하지 못했어요. 잠시 후 다시 로그인해 주세요."); return; }   // 연결 문제로는 로그아웃시키지 않아요
     await Auth.client.auth.signOut();
     show("info", p.status === "rejected"
       ? "가입이 승인되지 않았어요. 관리자에게 문의해 주세요."

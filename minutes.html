@@ -123,14 +123,20 @@
     .docphotos { grid-template-columns:1fr; }
   }
 
-  @page { size:A4; margin:16mm 14mm; }
+  /* 인쇄: 모든 쪽 오른쪽 위에 로고, 아래 가운데에 쪽 번호(제출용 PDF와 같은 모양) */
+  @page { size:A4; margin:24mm 14mm 18mm;
+    @top-right { content:""; width:42mm; height:15mm; background:url("logo.png") no-repeat right center / contain; }
+    @bottom-center { content:"- " counter(page) " -"; font-size:10pt; color:#333; } }
   @media print {
     body { background:#fff; padding:0; font-size:12pt; }
     .noprint, #app-bar { display:none !important; }
     .doc { border:0; padding:0; border-radius:0; }
-    .doc .cover { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; min-height:160mm; color:var(--navy); }
-    .doc .cover .c1 { font-size:32pt; font-weight:700; line-height:1.4; }
-    .doc .cover .c2 { font-size:28pt; font-weight:700; margin-top:30mm; }
+    /* 첫 쪽: 큰 제목 3줄 + 연도, 그 아래 1. 회의 개요(표) */
+    .doc .cover { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; height:160mm; color:#1a2e50; }
+    .doc .cover .c1 { font-size:36pt; font-weight:700; line-height:1.45; }
+    .doc .cover .c1b { font-size:30pt; font-weight:700; line-height:1.5; }
+    .doc .cover .c2 { font-size:28pt; font-weight:700; margin-top:28mm; }
+    .sigcell .ph { visibility:hidden; }          /* 직접 서명·미서명 같은 안내 글은 종이에 안 찍어요(서명 칸은 비워 둠) */
     .doc h2 { break-after:avoid; }
     h2.p2 { break-before:page; margin-top:0 !important; }
     .keep { break-inside:avoid; }
@@ -165,6 +171,6 @@
   </div>
 </dialog>
 
-<script src="minutes.js?v=9"></script>
+<script src="minutes.js?v=11"></script>
 </body>
 </html>

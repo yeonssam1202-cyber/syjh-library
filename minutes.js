@@ -531,9 +531,9 @@ window.whenAuthed.then(function (me) {
       } else if (m.status === 'signing' && a.user_id === me.id) {
         td.appendChild(h('button', { class: 'primary noprint', type: 'button', text: '서명하기', onclick: function () { openSign(m, a); } }));
       } else if (!a.user_id) {
-        td.appendChild(h('span', { class: 'wait', text: '직접 서명' }));
+        td.appendChild(h('span', { class: 'wait ph', text: '직접 서명' }));
       } else {
-        td.appendChild(h('span', { class: 'wait', text: m.status === 'closed' ? '미서명' : (m.status === 'draft' ? '' : '서명 대기') }));
+        td.appendChild(h('span', { class: 'wait ph', text: m.status === 'closed' ? '미서명' : (m.status === 'draft' ? '' : '서명 대기') }));
       }
       return td;
     }
@@ -567,7 +567,7 @@ window.whenAuthed.then(function (me) {
       h('colgroup', null, [13, 15, 13, 15, 13, 31].map(function (w) { return h('col', { style: 'width:' + w + '%' }); })),
       h('tr', null, h('th', { text: '회의 차수' }), h('td', { text: '제' + m.seq + '차' }), h('th', { text: '회의 구분' }), h('td', { text: m.kind }), h('th', { text: '회의 일시' }), h('td', { text: when(m) })),
       h('tr', null, h('th', { text: '장소' }), h('td', { text: m.place }), h('th', { text: '작성자명' }), h('td', { text: m.author_name }), h('th', { text: '참석 현황' }),
-        h('td', null, attText(c), h('div', { class: 'hint noprint', text: c.quorum ? '성원(의결 가능)' : '성원 미달' }))),
+        h('td', null, h('div', { text: '재적 ' + c.total + '명 중 ' + c.present + '명 참석,' }), h('div', { text: c.absent + '명 불참, ' + c.observers + '명 배석' }), h('div', { class: 'hint noprint', text: c.quorum ? '성원(의결 가능)' : '성원 미달' }))),
       h('tr', null, h('th', { text: '안건' }), h('td', { class: 'left', colspan: '5' }, agenda.length ? agenda.map(function (x, k) { return h('div', { text: (k + 1) + '. ' + x }); }) : '')));
 
     function box(title, body) { return h('div', { class: 'box' }, h('div', { class: 'bh', text: title }), h('div', { class: 'bb', text: body || '' })); }
@@ -726,7 +726,7 @@ window.whenAuthed.then(function (me) {
     if (reviewPanel) app.appendChild(reviewPanel);
     if (sugPanel) app.appendChild(sugPanel);
     app.appendChild(h('div', { class: 'doc' },
-      h('div', { class: 'cover' }, h('div', { class: 'c1' }, '쌍용더플래티넘장항', h('br'), '작은도서관 운영위원회', h('br'), '회의록'), h('div', { class: 'c2', text: year + '년' })),
+      h('div', { class: 'cover' }, h('div', { class: 'c1', text: '쌍용더플래티넘장항' }), h('div', { class: 'c1b', text: '작은도서관 운영위원회' }), h('div', { class: 'c1b', text: '회의록' }), h('div', { class: 'c2', text: year + '년' })),
       h('h2', { text: '1. 회의 개요' }), overview, overviewN,
       h('h2', { class: 'p2', text: '2. 회의록' }), box('회의 내용 (요약)', m.summary), box('회의 결과', m.result),
       h('div', { class: 'keep' },

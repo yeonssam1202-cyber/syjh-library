@@ -21,7 +21,7 @@ window.whenAuthed.then(async function (me) {
     safe(db.from('meeting_events').select('*').gte('event_date', today).order('event_date').order('start_time').limit(1), []),
     safe(db.from('shifts').select('id,shift_date,slot').eq('user_id', me.id).gte('shift_date', today).lte('shift_date', weekEnd).order('shift_date'), []),
     safe(db.from('tasks').select('id,title,status,due_date,task_assignees(user_id,role)').neq('status', 'done').limit(200), []),
-    safe(db.from('meetings').select('id,seq,kind,meeting_date,status,meeting_attendees(id,user_id,attended),meeting_signatures(attendee_id),meeting_reviews(attendee_id)').in('status', ['draft', 'signing']), []),
+    safe(db.from('meetings').select('id,seq,kind,meeting_date,status,meeting_attendees(id,user_id,attended),meeting_signatures(attendee_id),meeting_reviews(attendee_id,content_hash)').in('status', ['draft', 'signing']), []),
     isApprover ? safe(db.from('shift_change_requests').select('id').eq('status', 'pending'), []) : Promise.resolve([]),
     me.role === 'admin' ? safe(db.from('profiles').select('id').eq('status', 'pending'), []) : Promise.resolve([])
   ]);
@@ -34,15 +34,25 @@ window.whenAuthed.then(async function (me) {
   var late = myTasks.filter(function (t) { return t.due_date && t.due_date < today; });
 
   // ----- 해야 할 일 -----
+  var recheck = [];
   meetings.forEach(function (m) {
     var mine = m.meeting_attendees.filter(function (a) { return a.user_id === me.id && a.attended; })[0];
     if (!mine) return;
     var label = '제' + m.seq + '차 ' + m.kind + ' (' + md(m.meeting_date) + ')';
     if (m.status === 'signing' && !m.meeting_signatures.some(function (s) { return s.attendee_id === mine.id; }))
       todo.push({ text: label + ' 회의록에 서명해 주세요', href: 'minutes.html?id=' + m.id, warn: true });
-    if (m.status === 'draft' && !m.meeting_reviews.some(function (r) { return r.attendee_id === mine.id; }))
+    var myRv = m.meeting_reviews.filter(function (r) { return r.attendee_id === mine.id; })[0];
+    if (m.status === 'draft' && !myRv)
       todo.push({ text: label + ' 회의록을 검토해 주세요', href: 'minutes.html?id=' + m.id });
+    if (m.status === 'draft' && myRv) recheck.push({ m: m, rv: myRv, label: label });      // 검토했어도 그 뒤 내용이 바뀌었는지 아래에서 확인
   });
+  // 검토한 뒤에 회의록이 수정됐으면 다시 검토하라고 알려요(수정 → 재검토가 이어지게)
+  await Promise.all(recheck.map(async function (x) {
+    try {
+      var hr = await db.rpc('meeting_content_hash', { mid: x.m.id });
+      if (!hr.error && hr.data && hr.data !== x.rv.content_hash) todo.push({ text: x.label + ' 회의록이 수정됐어요. 다시 검토해 주세요', href: 'minutes.html?id=' + x.m.id, warn: true });
+    } catch (e) {}
+  }));
   var unreadN = notices.filter(function (n) { return n.created_by !== me.id && !myReads[n.id]; });
   if (unreadN.length) todo.push({ text: '새 공지 ' + unreadN.length + '건을 아직 읽지 않았어요', href: 'notices.html' });
   if (pendReq.length) todo.push({ text: '승인할 근무 변경 요청이 ' + pendReq.length + '건 있어요', href: 'shifts.html', warn: true });

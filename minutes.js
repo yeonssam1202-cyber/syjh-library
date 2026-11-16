@@ -194,7 +194,7 @@ window.whenAuthed.then(function (me) {
     return {
       id: m.id, seq: m.seq, kind: m.kind, meeting_date: m.meeting_date, start_time: fmtTime(m.start_time), end_time: fmtTime(m.end_time),
       place: m.place, author_name: m.author_name, observers: m.observers, agenda: m.agenda, summary: m.summary, result: m.result,
-      photos: m.meeting_photos.slice(), attendees: att
+      photos: m.meeting_photos.slice(), attendees: att, reviewCount: (m.meeting_reviews || []).length
     };
   }
   async function showEditor(d) {
@@ -202,6 +202,7 @@ window.whenAuthed.then(function (me) {
     document.title = (d.id ? '회의록 수정' : '새 회의록') + ' · 작은도서관 운영위원회';
     app.textContent = '';
     if (d.fromEvent) notice('ok', d.fromEvent);
+    if (d.reviewCount) app.appendChild(h('div', { class: 'panel', style: 'border-left:6px solid #c27a1a' }, h('div', { text: '이미 검토를 마친 위원이 ' + d.reviewCount + '명 있어요. 내용을 고치면 그분들은 "수정됨"으로 표시돼서 다시 검토해야 해요.' })));
 
     function field(label, input, hint) { return h('div', null, h('label', { class: 'l', text: label }), input, hint ? h('div', { class: 'hint', text: hint }) : null); }
     function text(key, type, extra) {
@@ -592,6 +593,33 @@ window.whenAuthed.then(function (me) {
     var attending = att.filter(function (a) { return a.attended; });
     function isStale(a) { var r = rvByAtt[a.id]; return !!(r && curHash && r.content_hash !== curHash); }
 
+    // 검토 완료(이미 검토했는데 내용이 바뀐 경우는 이전 기록을 지우고 다시 기록)
+    async function doReview(a) {
+      if (pending.length && !(await ask('아직 처리되지 않은 수정 제안이 ' + pending.length + '건 있어요. 제안이 반영되면 검토 완료가 "수정됨"으로 바뀌어요. 그래도 지금 검토 완료할까요?', '검토 완료'))) return;
+      if (rvByAtt[a.id]) { var d0 = await db.from('meeting_reviews').delete().eq('attendee_id', a.id); if (d0.error) { fail(d0.error); return; } }
+      var x = await db.from('meeting_reviews').insert({ attendee_id: a.id, meeting_id: m.id });
+      if (x.error) { fail(x.error); return; }
+      await route(); notice('ok', '검토 완료로 기록했어요.');
+    }
+    async function undoReview(a) {
+      var x = await db.from('meeting_reviews').delete().eq('attendee_id', a.id);
+      if (x.error) { fail(x.error); return; }
+      await route();
+    }
+    // 본인(참석 위원)을 위한 "내 검토" 상자: 읽고 → 고칠 곳 제안 → 검토 완료가 한 곳에서 이어지게
+    var myBox = null, myAtt = isDraft ? attending.filter(function (a) { return a.user_id === me.id; })[0] : null;
+    if (myAtt) {
+      var r0 = rvByAtt[myAtt.id], stale0 = isStale(myAtt), needs = !r0 || stale0;
+      myBox = h('div', { class: 'panel noprint', style: 'border-left:6px solid ' + (needs ? '#1f4b8f' : '#2f6b3a'), 'data-state': needs ? 'review-needed' : 'reviewed' },
+        h('h2', { text: '내 검토' }),
+        h('div', { style: 'font-size:16px;margin-bottom:10px', text: !r0 ? '회의록을 읽고 확인해 주세요. 고칠 곳이 있으면 먼저 "고칠 곳 제안하기"를 눌러 주세요.'
+          : stale0 ? '⚠ 검토한 뒤에 내용이 바뀌었어요. 아래 "수정 이력"을 확인하고 다시 검토 완료를 눌러 주세요.' : '✓ 검토를 완료했어요 (' + fmtDT(r0.reviewed_at) + ').' }),
+        pending.length ? h('div', { class: 'hint', style: 'margin:0 0 8px', text: '처리되지 않은 수정 제안이 ' + pending.length + '건 있어요.' }) : null,
+        h('div', { class: 'bar', style: 'margin:0' },
+          needs && me.can('minutes_suggest') ? h('button', { class: 'ghost', type: 'button', text: '고칠 곳 제안하기', onclick: function () { openSuggest(); } }) : null,
+          needs ? h('button', { class: 'primary', type: 'button', text: r0 ? '다시 검토 완료' : '검토 완료', onclick: actOnce(function () { return doReview(myAtt); }) })
+                : h('button', { class: 'ghost', type: 'button', text: '검토 취소', onclick: actOnce(function () { return undoReview(myAtt); }) })));
+    }
     var reviewPanel = null;
     if (isDraft || (m.meeting_reviews || []).length) {
       var nDone = attending.filter(function (a) { return rvByAtt[a.id]; }).length;
@@ -603,16 +631,8 @@ window.whenAuthed.then(function (me) {
                        isStale(a) ? h('span', { class: 'badge signing', text: '수정됨' }) : null)
                      : h('span', { class: 'wait', text: isDraft ? '검토 전' : '검토 기록 없음' });
         var row = h('div', { class: 'rv' }, h('div', { class: 'nm', text: a.position + ' ' + a.name + (a.user_id ? '' : ' (계정 없음)') }), st);
-        if (canDo && !r) row.appendChild(h('button', { class: 'primary', type: 'button', text: a.user_id ? '검토 완료' : '대신 확인', onclick: actOnce(async function () {
-          var x = await db.from('meeting_reviews').insert({ attendee_id: a.id, meeting_id: m.id });
-          if (x.error) { fail(x.error); return; }
-          await route(); notice('ok', '검토 완료로 기록했어요.');
-        }) }));
-        if (canDo && r) row.appendChild(h('button', { class: 'linkbtn', type: 'button', text: '취소', onclick: actOnce(async function () {
-          var x = await db.from('meeting_reviews').delete().eq('attendee_id', a.id);
-          if (x.error) { fail(x.error); return; }
-          await route();
-        }) }));
+        if (canDo && (!r || isStale(a))) row.appendChild(h('button', { class: 'primary', type: 'button', text: r ? '다시 검토 완료' : (a.user_id ? '검토 완료' : '대신 확인'), onclick: actOnce(function () { return doReview(a); }) }));
+        if (canDo && r && !isStale(a)) row.appendChild(h('button', { class: 'linkbtn', type: 'button', text: '취소', onclick: actOnce(function () { return undoReview(a); }) }));
         reviewPanel.appendChild(row);
       });
       if (attending.some(isStale)) reviewPanel.appendChild(h('div', { class: 'hint', text: '"수정됨"은 그 위원이 검토한 뒤에 회의록 내용이 바뀌었다는 뜻이에요. 아래 수정 이력을 확인해 주세요.' }));
@@ -664,7 +684,8 @@ window.whenAuthed.then(function (me) {
           bar.appendChild(h('button', { class: 'primary', type: 'button', text: '반영', onclick: actOnce(async function () {
             var curText = String(m[s.field] || '');
             if (curText !== s.base_text && !(await ask('이 제안을 낸 뒤에 ' + FIELD[s.field] + '이(가) 이미 바뀌었어요. 반영하면 제안한 글로 통째로 바뀌어요. 그래도 반영할까요?', '반영'))) return;
-            await decide(s, 'accept', '반영했어요. 수정 이력에 기록돼요.');
+            var nDone2 = (m.meeting_reviews || []).length;
+            await decide(s, 'accept', '반영했어요. 수정 이력에 기록돼요.' + (nDone2 ? ' 이미 검토한 위원 ' + nDone2 + '명은 "수정됨"으로 표시되니 다시 검토해 달라고 알려 주세요.' : ''));
           }) }));
           bar.appendChild(h('button', { class: 'ghost', type: 'button', text: '거절', onclick: actOnce(async function () {
             if (await ask(s.proposed_by_name + ' 님의 제안을 거절할까요?', '거절')) await decide(s, 'reject', '거절했어요.');
@@ -723,6 +744,7 @@ window.whenAuthed.then(function (me) {
     var year = (m.meeting_date || '').slice(0, 4);
     app.appendChild(head);
     app.appendChild(acts);
+    if (myBox) app.appendChild(myBox);
     if (reviewPanel) app.appendChild(reviewPanel);
     if (sugPanel) app.appendChild(sugPanel);
     app.appendChild(h('div', { class: 'doc' },

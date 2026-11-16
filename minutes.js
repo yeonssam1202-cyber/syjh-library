@@ -14,6 +14,7 @@ window.whenAuthed.then(function (me) {
   var $ = function (id) { return document.getElementById(id); };
   var app = $('app');
   Unsaved.watch(app);
+  var members = [];
 
   // ---------- 작은 도우미 ----------
   function add(e, c) {

@@ -160,13 +160,15 @@ window.whenAuthed.then(function (me) {
   // ---------- 작성 ----------
   async function newDraft() {
     await loadMembers();
+    var allSeq = await db.from('meetings').select('seq,kind'), seqBy = {};
+    (allSeq.data || []).forEach(function (r) { seqBy[r.kind] = Math.max(seqBy[r.kind] || 0, r.seq); });
     var last = await db.from('meetings').select('seq,place,meeting_attendees(user_id,position)')
       .order('meeting_date', { ascending: false }).order('seq', { ascending: false }).limit(1);
     if (last.error) throw last.error;
     var prev = last.data && last.data[0], pos = {};
     if (prev) prev.meeting_attendees.forEach(function (a) { if (a.user_id) pos[a.user_id] = a.position; });
     var d = {
-      id: null, seq: (prev ? prev.seq : 0) + 1, kind: '정기회의', meeting_date: today(), start_time: '10:00', end_time: '12:00',
+      id: null, seq: (seqBy['정기회의'] || 0) + 1, seqBy: seqBy, kind: '정기회의', meeting_date: today(), start_time: '10:00', end_time: '12:00',
       place: prev ? prev.place : '', author_name: me.name || '', observers: 0, agenda: '', summary: '', result: '', photos: [],
       attendees: members.filter(function (m) { return m.position !== '자원봉사'; }).map(function (m) { return { user_id: m.id, name: m.name, position: m.position || pos[m.id] || '운영위원', attended: true }; })
     };
@@ -177,7 +179,7 @@ window.whenAuthed.then(function (me) {
       if (!ev.error && ev.data) {
         var e = ev.data, rs = await db.from('meeting_rsvps').select('user_id,response').eq('event_id', evId), by = {};
         if (!rs.error) rs.data.forEach(function (r) { by[r.user_id] = r.response; });
-        d.event_id = e.id; d.kind = e.kind; d.meeting_date = e.event_date;
+        d.event_id = e.id; d.kind = e.kind; d.seq = (seqBy[e.kind] || 0) + 1; d.meeting_date = e.event_date;
         d.start_time = e.start_time ? String(e.start_time).slice(0, 5) : d.start_time; d.end_time = e.end_time ? String(e.end_time).slice(0, 5) : d.end_time;
         if (e.place) d.place = e.place;
         d.agenda = e.agenda || '';
@@ -199,6 +201,12 @@ window.whenAuthed.then(function (me) {
   }
   async function showEditor(d) {
     if (!d) d = await newDraft();
+    if (d.id) {
+      await loadMembers();
+      var have = {}; d.attendees.forEach(function (a) { if (a.user_id) have[a.user_id] = 1; });
+      members.filter(function (m) { return m.position !== '자원봉사' && !have[m.id]; }).forEach(function (m) { d.attendees.push({ user_id: m.id, name: m.name, position: m.position || '운영위원', attended: false }); });
+      sortAtt(d.attendees);
+    }
     document.title = (d.id ? '회의록 수정' : '새 회의록') + ' · 작은도서관 운영위원회';
     app.textContent = '';
     if (d.fromEvent) notice('ok', d.fromEvent);
@@ -218,7 +226,12 @@ window.whenAuthed.then(function (me) {
       return t;
     }
     var kindSel = h('select', null, h('option', { value: '정기회의', text: '정기회의' }), h('option', { value: '임시회의', text: '임시회의' }));
-    kindSel.value = d.kind; kindSel.onchange = function () { d.kind = kindSel.value; };
+    var seqIn = null;
+    kindSel.value = d.kind;
+    kindSel.onchange = function () {
+      d.kind = kindSel.value;
+      if (!d.id && d.seqBy && !d.seqTouched) { d.seq = (d.seqBy[d.kind] || 0) + 1; if (seqIn) seqIn.value = d.seq; }
+    };
 
     // 참석자
     var attBox = h('div'), sumBox = h('div', { class: 'sum' });
@@ -286,7 +299,7 @@ window.whenAuthed.then(function (me) {
 
     app.appendChild(h('div', { class: 'panel' }, h('h2', { text: '1. 회의 개요' }),
       h('div', { class: 'grid3' },
-        field('회의 차수 (제 ○ 차)', text('seq', 'number', { min: '1', max: '999' })),
+        field('회의 차수 (제 ○ 차)', (seqIn = text('seq', 'number', { min: '1', max: '999' }), seqIn.addEventListener('input', function () { d.seqTouched = true; }), seqIn), '정기회의·임시회의는 따로 세어요. 회의 구분을 고르면 다음 번호가 자동으로 들어가요.'),
         field('회의 구분', kindSel),
         field('날짜', text('meeting_date', 'date'))),
       h('div', { class: 'grid3' },

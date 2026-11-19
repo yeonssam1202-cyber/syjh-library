@@ -49,6 +49,16 @@
     <div id="msg" class="msg"></div>
   </section>
 
+  <section class="card upload hide" id="link-box">
+    <h2 style="font-size:17px;margin-bottom:12px">링크 올리기 (관리자)</h2>
+    <label for="l-title">화면에 보일 이름</label>
+    <input id="l-title" type="text" maxlength="80" placeholder="예: 견학 도서관 사진 폴더">
+    <label for="l-url">주소 (https:// 로 시작)</label>
+    <input id="l-url" type="text" maxlength="2000" inputmode="url" placeholder="https://...">
+    <div><button id="btn-link" type="button">링크 올리기</button></div>
+    <div class="note">구글 드라이브·네이버 문서처럼 함께 볼 주소를 올려요. 주소를 아는 사람은 누구나 열 수 있는 링크라면 외부에 퍼지지 않게 조심해 주세요.</div>
+  </section>
+
   <section class="card upload hide" id="admin-box">
     <h2 style="font-size:17px;margin-bottom:12px">자료 올리기 (관리자)</h2>
     <label for="f-title">화면에 보일 이름 (비워 두면 파일 이름)</label>
@@ -82,21 +92,25 @@
   window.whenAuthed.then(function (me) {
     var client = Auth.client;
     var isAdmin = me.can("docs_upload");
-    if (isAdmin) document.getElementById("admin-box").classList.remove("hide");
+    if (isAdmin) { document.getElementById("admin-box").classList.remove("hide"); document.getElementById("link-box").classList.remove("hide"); }
 
     async function load() {
-      var r = await client.from("documents").select("id,path,title,orig_name,size_bytes,created_at").order("created_at", { ascending: false });
+      var r = await client.from("documents").select("id,path,title,orig_name,size_bytes,created_at,url").order("created_at", { ascending: false });
       rowsEl.textContent = "";
       if (r.error) { show("목록을 불러오지 못했어요: " + r.error.message); return; }
       emptyEl.classList.toggle("hide", r.data.length > 0);
       r.data.forEach(function (d) {
         var tr = document.createElement("tr");
-        var td1 = document.createElement("td"); td1.textContent = d.title || d.orig_name;
-        var td2 = document.createElement("td"); td2.className = "num hide-sm"; td2.textContent = fmtSize(d.size_bytes || 0);
+        var td1 = document.createElement("td"); td1.textContent = d.title || d.orig_name || d.url;
+        if (d.url) {
+          var host = ""; try { host = new URL(d.url).host; } catch (e) {}
+          var sm = document.createElement("div"); sm.style.cssText = "font-size:13px;color:#6c6b69;word-break:break-all"; sm.textContent = "링크 · " + host; td1.appendChild(sm);
+        }
+        var td2 = document.createElement("td"); td2.className = "num hide-sm"; td2.textContent = d.url ? "링크" : fmtSize(d.size_bytes || 0);
         var td3 = document.createElement("td"); td3.className = "hide-sm"; td3.textContent = fmtDate(d.created_at);
         var td4 = document.createElement("td"); td4.className = "num";
-        var dl = document.createElement("button"); dl.type = "button"; dl.textContent = "다운로드";
-        dl.onclick = async function () {
+        var dl = document.createElement("button"); dl.type = "button"; dl.textContent = d.url ? "열기" : "다운로드";
+        dl.onclick = d.url ? function () { window.open(d.url, "_blank", "noopener,noreferrer"); } : async function () {
           clear(); dl.disabled = true;
           var s = await client.storage.from(BUCKET).createSignedUrl(d.path, 60, { download: d.orig_name });
           dl.disabled = false;
@@ -109,7 +123,7 @@
           del.onclick = async function () {
             if (!(await askBox("'" + (d.title || d.orig_name) + "' 자료를 삭제할까요? 되돌릴 수 없어요.", "삭제"))) return;
             clear();
-            var rm = await client.storage.from(BUCKET).remove([d.path]);
+            var rm = d.path ? await client.storage.from(BUCKET).remove([d.path]) : {};
             if (rm.error) { show("삭제하지 못했어요: " + rm.error.message); return; }
             var dr = await client.from("documents").delete().eq("id", d.id);
             if (dr.error) { show("목록에서 지우지 못했어요: " + dr.error.message); return; }
@@ -141,6 +155,20 @@
       }
       document.getElementById("f-file").value = ""; document.getElementById("f-title").value = "";
       show("올렸어요.", "ok"); load();
+    };
+
+    var lb = document.getElementById("btn-link");
+    lb.onclick = async function () {
+      clear();
+      var url = document.getElementById("l-url").value.trim(), title = document.getElementById("l-title").value.trim();
+      if (!/^https?:\/\/[^\s]+$/i.test(url)) { show("주소는 http:// 또는 https:// 로 시작해야 해요."); return; }
+      if (!title) { show("화면에 보일 이름을 적어 주세요."); return; }
+      lb.disabled = true;
+      var ins = await client.from("documents").insert({ url: url, title: title, orig_name: "", size_bytes: 0 });
+      lb.disabled = false;
+      if (ins.error) { show("링크를 올리지 못했어요: " + ins.error.message); return; }
+      document.getElementById("l-url").value = ""; document.getElementById("l-title").value = "";
+      show("링크를 올렸어요.", "ok"); load();
     };
 
     load();

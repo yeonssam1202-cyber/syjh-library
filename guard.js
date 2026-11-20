@@ -70,7 +70,7 @@
     if (p.role === "admin") mine.push(["회원 승인", "members.html"]);
     return [
       { name: "홈", short: "홈", items: [["홈", "home.html"]] },
-      { name: "회의·공지", short: "회의·공지", items: [["공지", "notices.html"], ["회의 일정", "schedule.html"], ["회의록", "minutes.html"]] },
+      { name: "회의·공지", short: "회의·공지", items: [["공지", "notices.html"], ["회의 일정", "schedule.html"], ["날짜 투표", "poll.html"], ["회의록", "minutes.html"]] },
       { name: "업무·근무", short: "업무·근무", items: work },
       { name: "회계", short: "회계", items: [["예산·지출", "budget.html"], ["감사 보고서", "audit.html"]] },
       { name: "자료", short: "자료", items: [["회칙·세칙", "rules.html"], ["자료실", "documents.html"]] },

@@ -72,6 +72,14 @@
       states: { '참석': { label: '참석', tone: 'ok' }, '불참': { label: '불참', tone: 'bad' }, '미정': { label: '미정', tone: 'wait' } },
       transitions: [{ from: '*', to: '*', who: '재적 위원 본인', ui: '참석/불참/미정 버튼', note: '응답 전(없음) → 응답 → 언제든 바꿀 수 있어요. 지난 회의는 화면에서 응답 버튼을 숨겨요' }]
     },
+    poll: {
+      title: '회의 날짜 투표', where: 'meeting_polls.status', enforcedBy: 'DB: close_meeting_poll() 함수 + RLS(열려 있을 때만 투표·후보 변경)',
+      initial: 'open',
+      states: { open: { label: '투표 중', tone: 'wait' }, closed: { label: '확정', tone: 'ok' } },
+      transitions: [
+        { from: 'open', to: 'closed', who: '만든 사람·관리자', ui: '이 날짜로 확정', guard: '후보 중 하나를 고름', note: '회의 일정(meeting_events)이 자동으로 만들어져요. 확정 뒤에는 투표·후보 변경 불가(되돌릴 수 없음)', pendingDb: 'supabase-poll.sql' }
+      ]
+    },
     shiftAction: {
       title: '근무 이력 종류', where: 'shift_history.action', enforcedBy: 'DB: 트리거(자동 기록, 직접 쓰기 불가)',
       initial: null,

@@ -8,7 +8,7 @@
   .mark { font-weight:600; }
 
   /* 카드(덩어리) 테두리와 그림자 */
-  .panel, .card, .card2, .calmain, .calday, .ev, .ncard, .ex, .sumcard, .rcard, .dcard, .ecard, .stat, .sug {
+  .panel, .card, .card2, .calmain, .calday, .ev, .ncard, .ex, .sumcard, .rcard, .dcard, .ecard, .stat, .sug, .pl {
     border:1px solid #c5d0e2; box-shadow:0 1px 4px rgba(20,48,92,.08);
   }
   .ncard.pinned, .todo a { border-left-width:5px; }

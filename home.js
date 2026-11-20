@@ -66,6 +66,18 @@ window.whenAuthed.then(async function (me) {
     if (!me.isVolunteer && !mineR) todo.push({ text: md(ev.event_date) + ' ' + ev.title + ' 참석 여부를 알려 주세요', href: '#next' });
   }
 
+  // 투표할 날짜 투표가 있으면 알려 줘요(재적 위원만). 표가 아직 없으면 조용히 건너뛰어요.
+  if (!me.isVolunteer) {
+    var openPolls = await safe(db.from('meeting_polls').select('id,title').eq('status', 'open'), []);
+    if (openPolls.length) {
+      var popts = await safe(db.from('meeting_poll_options').select('id,poll_id').in('poll_id', openPolls.map(function (p) { return p.id; })), []);
+      var pv = popts.length ? await safe(db.from('meeting_poll_votes').select('option_id').eq('user_id', me.id).in('option_id', popts.map(function (o) { return o.id; })), []) : [];
+      var voted = {}; pv.forEach(function (v) { voted[v.option_id] = 1; });
+      var pending = openPolls.filter(function (p) { return !popts.some(function (o) { return o.poll_id === p.id && voted[o.id]; }); });
+      if (pending.length) todo.push({ text: '"' + pending[0].title + '"에 가능한 날짜를 골라 주세요' + (pending.length > 1 ? ' (외 ' + (pending.length - 1) + '건)' : ''), href: 'poll.html', warn: true });
+    }
+  }
+
   // ----- 화면 -----
   app.textContent = '';
   app.appendChild(h('div', { class: 'hero' },

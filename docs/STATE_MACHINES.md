@@ -58,6 +58,9 @@ stateDiagram-v2
 ### 1-7. 회의 참석 응답 `meeting_rsvps.response`
 `(없음) → 참석 | 불참 | 미정`, 언제든 본인만 변경. 자원봉사는 응답 불가(재적 위원 아님). 지난 회의는 화면에서 응답 버튼을 숨김.
 
+### 1-7b. 회의 날짜 투표 `meeting_polls.status`
+`open(투표 중) → closed(확정)` 한 방향. 임원·관리자(만든 사람)가 `close_meeting_poll()`로 한 날짜를 고르면 회의 일정이 자동 생성되고 투표가 닫혀요(되돌릴 수 없음). 투표 중에만 위원이 가능/어려움을 남기고(재적 위원 본인만, 자원봉사 제외) 후보 날짜를 바꿀 수 있어요. SQL: `supabase-poll.sql`.
+
 ### 1-8. 기록용 종류 (상태 아님, 자동 기록) `shift_history.action`
 `apply / remove / move / request / reject / withdraw` — 트리거가 쌓는 감사 기록(직접 쓰기 불가).
 

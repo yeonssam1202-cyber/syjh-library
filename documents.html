@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>작은도서관 운영위원회 · 자료실</title>
-<script src="guard.js?v=15"></script>
+<script src="guard.js?v=16"></script>
 <style>
   :root { --bg:#ffffff; --text:#201f1d; --muted:#6c6b69; --accent:#1f4b8f; --accent-700:#14305c; --line:#dde3ec; --err:#a8321f; --ok:#2f6b3a; }
   * { box-sizing:border-box; margin:0; }
@@ -38,7 +38,7 @@
 <main>
   <div class="mark">작은도서관 운영위원회</div>
   <h1>자료실</h1>
-  <p class="sub">로그인한 승인 위원만 내려받을 수 있는 자료예요. 외부에 공유하지 말아 주세요.</p>
+  <p class="sub">로그인한 승인 위원만 볼 수 있는 자료예요. 외부에 공유하지 말아 주세요. 운영위원은 누구나 올릴 수 있고, 지우기는 본인이 올린 자료만 해요(관리자는 모두).</p>
 
   <section class="card">
     <table>
@@ -50,7 +50,7 @@
   </section>
 
   <section class="card upload hide" id="link-box">
-    <h2 style="font-size:17px;margin-bottom:12px">링크 올리기 (관리자)</h2>
+    <h2 style="font-size:17px;margin-bottom:12px">링크 올리기</h2>
     <label for="l-title">화면에 보일 이름</label>
     <input id="l-title" type="text" maxlength="80" placeholder="예: 견학 도서관 사진 폴더">
     <label for="l-url">주소 (https:// 로 시작)</label>
@@ -60,7 +60,7 @@
   </section>
 
   <section class="card upload hide" id="admin-box">
-    <h2 style="font-size:17px;margin-bottom:12px">자료 올리기 (관리자)</h2>
+    <h2 style="font-size:17px;margin-bottom:12px">자료 파일 올리기</h2>
     <label for="f-title">화면에 보일 이름 (비워 두면 파일 이름)</label>
     <input id="f-title" type="text" maxlength="80">
     <input id="f-file" type="file">
@@ -95,7 +95,7 @@
     if (isAdmin) { document.getElementById("admin-box").classList.remove("hide"); document.getElementById("link-box").classList.remove("hide"); }
 
     async function load() {
-      var r = await client.from("documents").select("id,path,title,orig_name,size_bytes,created_at,url").order("created_at", { ascending: false });
+      var r = await client.from("documents").select("id,path,title,orig_name,size_bytes,created_at,url,uploaded_by").order("created_at", { ascending: false });
       rowsEl.textContent = "";
       if (r.error) { show("목록을 불러오지 못했어요: " + r.error.message); return; }
       emptyEl.classList.toggle("hide", r.data.length > 0);
@@ -118,7 +118,7 @@
           location.href = s.data.signedUrl;
         };
         td4.appendChild(dl);
-        if (isAdmin) {
+        if (me.role === "admin" || (isAdmin && d.uploaded_by === me.id)) {
           var del = document.createElement("button"); del.type = "button"; del.className = "ghost"; del.textContent = "삭제"; del.style.marginLeft = "6px";
           del.onclick = async function () {
             if (!(await askBox("'" + (d.title || d.orig_name) + "' 자료를 삭제할까요? 되돌릴 수 없어요.", "삭제"))) return;

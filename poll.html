@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>날짜 투표 · 작은도서관 운영위원회</title>
+<script src="guard.js?v=16"></script>
+<link rel="stylesheet" href="common.css?v=5">
+<style>
+  .pl { background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px 18px; margin-bottom:14px; }
+  .pl .t { font-size:18px; font-weight:700; }
+  .pl .s { color:var(--muted); font-size:15px; margin-top:2px; }
+  .opt { display:grid; grid-template-columns:1fr auto; gap:8px 12px; align-items:center; padding:12px 0; border-top:1px solid var(--line); }
+  .opt:first-of-type { border-top:0; }
+  .opt .d { font-weight:700; font-size:16px; }
+  .opt .best { display:inline-block; margin-left:6px; padding:1px 8px; border-radius:10px; background:var(--accent); color:#fff; font-size:13px; font-weight:600; }
+  .opt .cnt { color:var(--muted); font-size:14px; margin-top:2px; }
+  .opt .btns { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  .opt .btns button { padding:9px 16px; }
+  .opt .btns button.sel { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
+  .opt .btns button.sel.no { background:#a8321f; border-color:#a8321f; }
+  .bar2 { height:8px; border-radius:4px; background:#e8edf5; overflow:hidden; margin-top:6px; }
+  .bar2 > i { display:block; height:100%; background:var(--accent); }
+  .who { font-size:14px; margin-top:6px; }
+  .crow { display:grid; grid-template-columns:1.4fr 1fr 1fr auto; gap:8px; align-items:end; margin-bottom:8px; }
+  @media (max-width:640px) { .opt { grid-template-columns:1fr; } .opt .btns { justify-content:flex-start; } .crow { grid-template-columns:1fr 1fr; } .crow > :first-child { grid-column:1 / -1; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="notice" class="notice noprint" role="alert"></div>
+  <div id="app"></div>
+</div>
+
+<dialog id="dlg">
+  <form class="dlg" id="form" method="dialog">
+    <h3>회의 날짜 투표 만들기</h3>
+    <label class="l" for="p-title">투표 이름</label>
+    <input type="text" id="p-title" maxlength="100" required>
+    <div class="grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
+      <div><label class="l" for="p-kind">회의 구분</label><select id="p-kind"><option>정기회의</option><option>임시회의</option></select></div>
+      <div><label class="l" for="p-place">장소 (선택)</label><input type="text" id="p-place" maxlength="100"></div>
+    </div>
+    <label class="l">후보 날짜 (2개 이상, 최대 10개)</label>
+    <div id="cands"></div>
+    <button class="ghost" type="button" id="p-add">+ 후보 날짜 추가</button>
+    <label class="l" for="p-note" style="margin-top:12px">안내 (선택)</label>
+    <input type="text" id="p-note" maxlength="500" placeholder="예: 견학 후속 논의, 안건은 추후 공지">
+    <div class="bar" style="margin-bottom:0"><span class="sp"></span>
+      <button class="ghost" type="button" id="p-cancel">취소</button><button class="primary" type="submit" id="p-save">투표 열기</button></div>
+  </form>
+</dialog>
+
+<script src="ui.js?v=1"></script>
+<script src="poll.js?v=1"></script>
+</body>
+</html>

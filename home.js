@@ -99,17 +99,19 @@ window.whenAuthed.then(async function (me) {
 
   function buildCalendar(box) {
     var cur = new Date(); cur.setDate(1);
-    var sel = today, data = { events: [], tasks: [], shifts: [] };
-    var COLORS = { ev: '#14305c', task: '#c27a1a', shift: '#2f8f6b' };
+    var sel = today, data = { events: [], tasks: [], shifts: [], cal: [] };
+    var COLORS = { ev: '#14305c', task: '#c27a1a', shift: '#2f8f6b', cal: '#7b4ea3' };
+    var canAddCal = !me.isVolunteer;      // 재적 위원(자원봉사 제외)은 누구나 공유 일정을 추가해요
 
     async function loadMonth() {
       var a = U.ymd(cur), last = U.ymd(new Date(cur.getFullYear(), cur.getMonth() + 1, 0));
       var r = await Promise.all([
         safe(db.from('meeting_events').select('id,title,kind,event_date,start_time,place').gte('event_date', a).lte('event_date', last).order('start_time'), []),
         safe(db.from('tasks').select('id,title,status,due_date,task_assignees(user_id,role)').gte('due_date', a).lte('due_date', last), []),
-        safe(db.from('shifts').select('user_id,name,shift_date,slot').gte('shift_date', a).lte('shift_date', last).order('slot'), [])
+        safe(db.from('shifts').select('user_id,name,shift_date,slot').gte('shift_date', a).lte('shift_date', last).order('slot'), []),
+        safe(db.from('calendar_items').select('*').lte('item_date', last).gte('end_date', a).order('start_time'), [])
       ]);
-      data = { events: r[0], tasks: r[1], shifts: r[2] };
+      data = { events: r[0], tasks: r[1], shifts: r[2], cal: r[3] };
     }
     function itemsOn(ymd) {
       var items = [];
@@ -117,6 +119,9 @@ window.whenAuthed.then(async function (me) {
       data.tasks.filter(function (x) { return x.due_date === ymd; }).forEach(function (x) {
         var mine = x.task_assignees.some(function (a) { return a.user_id === me.id; });
         items.push({ k: 'task', t: x.title + (x.status === 'done' ? ' (완료)' : ''), mine: mine, done: x.status === 'done', href: 'tasks.html', sort: '09:99' });
+      });
+      data.cal.filter(function (c) { return c.item_date <= ymd && c.end_date >= ymd; }).forEach(function (c) {
+        items.push({ k: 'cal', t: (hm(c.start_time) ? hm(c.start_time) + ' ' : '') + c.title, row: c, sort: hm(c.start_time) || '00:00' });
       });
       var sh = data.shifts.filter(function (s) { return s.shift_date === ymd; });
       sh.forEach(function (s) { items.push({ k: 'shift', t: s.name + ' · ' + s.slot, short: s.name + ' ' + s.slot.slice(0, 2) + '시', mine: s.user_id === me.id, href: 'shifts.html', sort: s.slot.slice(0, 5) }); });
@@ -153,23 +158,76 @@ window.whenAuthed.then(async function (me) {
           h('button', { class: 'ghost', type: 'button', text: '오늘', onclick: function () { cur = new Date(); cur.setDate(1); sel = today; change(); } }),
           h('button', { class: 'ghost', type: 'button', 'aria-label': '다음 달', text: '›', onclick: function () { cur = new Date(y, m + 1, 1); change(); } })));
       var legend = h('div', { class: 'legend2' },
-        h('span', null, h('span', { class: 'dot ev' }), ' 회의'), h('span', null, h('span', { class: 'dot task' }), ' 업무 마감'), h('span', null, h('span', { class: 'dot shift' }), ' 근무 (내 근무는 굵게)'));
+        h('span', null, h('span', { class: 'dot ev' }), ' 회의'), h('span', null, h('span', { class: 'dot cal' }), ' 공유 일정'), h('span', null, h('span', { class: 'dot task' }), ' 업무 마감'), h('span', null, h('span', { class: 'dot shift' }), ' 근무 (내 근무는 굵게)'));
       var left = h('div', { class: 'calmain' }, head, grid, legend);
 
       // 선택한 날 내용
       var sd = U.parseYmd(sel), list = itemsOn(sel);
       var right = h('div', { class: 'calday' }, h('h3', { text: (sd.getMonth() + 1) + '월 ' + sd.getDate() + '일 (' + DAYS[sd.getDay()] + ')' + (sel === today ? ' · 오늘' : '') }));
       if (!list.length) right.appendChild(h('div', { class: 'hint', text: '이 날은 등록된 일정이 없어요.' }));
-      var LAB = { ev: '회의', task: '업무 마감', shift: '근무' };
+      var LAB = { ev: '회의', task: '업무 마감', shift: '근무', cal: '공유 일정' };
       list.forEach(function (it) {
+        if (it.k === 'cal') {
+          var c = it.row, when = hm(c.start_time) ? hm(c.start_time) + (hm(c.end_time) ? '~' + hm(c.end_time) : '') : '';
+          var span = c.end_date !== c.item_date ? md(c.item_date) + ' ~ ' + md(c.end_date) : '';
+          var det = [c.category, when, span, c.place].filter(Boolean).join(' · ');
+          var box2 = h('div', { class: 'ditem cal', style: 'align-items:flex-start' }, h('span', { class: 'dot cal', style: 'margin-top:8px' }),
+            h('div', { style: 'flex:1' }, h('div', { class: 'tt', style: 'font-weight:600', text: c.title }),
+              det ? h('div', { class: 'hint', text: det }) : null,
+              c.note ? h('div', { class: 'hint', style: 'white-space:pre-wrap', text: c.note }) : null,
+              h('div', { class: 'hint', text: (c.created_by_name || '') + ' 님이 올림' })));
+          if (canAddCal && (me.role === 'admin' || c.created_by === me.id)) box2.appendChild(h('button', { class: 'ghost', type: 'button', text: '고치기', onclick: function () { openCal(c, sel); } }));
+          right.appendChild(box2); return;
+        }
         right.appendChild(h('a', { class: 'ditem ' + it.k, href: it.href },
           h('span', { class: 'dot ' + it.k }), h('span', { class: 'k', text: LAB[it.k] }),
           h('span', { class: 'tt' + (it.mine ? ' mine' : '') + (it.done ? ' done' : ''), text: it.t + (it.k === 'task' && it.mine ? ' · 내 업무' : '') })));
       });
+      if (canAddCal) right.appendChild(h('button', { class: 'primary', type: 'button', style: 'margin-top:12px;width:100%', text: '+ 이 날 일정 추가', onclick: function () { openCal(null, sel); } }));
+      else right.appendChild(h('div', { class: 'hint', style: 'margin-top:10px', text: '공유 일정은 재적 위원이 추가할 수 있어요.' }));
       box.appendChild(left); box.appendChild(right);
     }
     async function change() { await loadMonth(); draw(); }
     change();
+
+    // ----- 공유 일정 추가 · 고치기 -----
+    var cdlg = document.getElementById('c-dlg'), editingCal = null;
+    function openCal(c, day) {
+      editingCal = c;
+      document.getElementById('c-head').textContent = c ? '공유 일정 고치기' : '공유 일정 추가';
+      document.getElementById('c-title').value = c ? c.title : '';
+      document.getElementById('c-cat').value = c ? c.category : '입대의 회의';
+      document.getElementById('c-date').value = c ? c.item_date : day;
+      document.getElementById('c-end').value = c && c.end_date !== c.item_date ? c.end_date : '';
+      document.getElementById('c-start').value = c ? hm(c.start_time) : '';
+      document.getElementById('c-endt').value = c ? hm(c.end_time) : '';
+      document.getElementById('c-place').value = c ? c.place : '';
+      document.getElementById('c-note').value = c ? c.note : '';
+      document.getElementById('c-del').style.display = c ? '' : 'none';
+      cdlg.showModal();
+    }
+    document.getElementById('c-cancel').onclick = function () { cdlg.close(); };
+    document.getElementById('c-form').onsubmit = async function (ev) {
+      ev.preventDefault();
+      var f = { title: document.getElementById('c-title').value.trim(), category: document.getElementById('c-cat').value, item_date: document.getElementById('c-date').value,
+        end_date: document.getElementById('c-end').value || document.getElementById('c-date').value, start_time: document.getElementById('c-start').value || null, end_time: document.getElementById('c-endt').value || null,
+        place: document.getElementById('c-place').value.trim(), note: document.getElementById('c-note').value.trim() };
+      if (!f.title || !f.item_date) { await sayBox('제목과 날짜를 적어 주세요.'); return; }
+      if (f.end_date < f.item_date) { await sayBox('끝나는 날이 시작 날짜보다 빠를 수 없어요.'); return; }
+      var btn = document.getElementById('c-save'); btn.disabled = true;
+      var r = editingCal ? await db.from('calendar_items').update(f).eq('id', editingCal.id) : await db.from('calendar_items').insert(f);
+      btn.disabled = false;
+      if (r.error) { await sayBox(U.friendly(r.error)); return; }
+      cdlg.close(); sel = f.item_date; var was = editingCal; editingCal = null;
+      var d0 = U.parseYmd(f.item_date); cur = new Date(d0.getFullYear(), d0.getMonth(), 1);
+      await change(); U.notice('ok', was ? '고쳤어요.' : '공유 일정을 추가했어요. 모든 위원의 달력에 보여요.');
+    };
+    document.getElementById('c-del').onclick = async function () {
+      if (!editingCal || !(await askBox('"' + editingCal.title + '" 일정을 지울까요?', '지우기'))) return;
+      var r = await db.from('calendar_items').delete().eq('id', editingCal.id);
+      if (r.error) { await sayBox(U.friendly(r.error)); return; }
+      cdlg.close(); editingCal = null; await change(); U.notice('ok', '지웠어요.');
+    };
   }
 
   // 다음 회의

@@ -2,6 +2,9 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<meta name="referrer" content="same-origin">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'">
+<script>if (window.top !== window.self) { try { window.top.location = window.self.location; } catch (e) { document.documentElement.innerHTML = ""; } }</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>작은도서관 운영위원회 · 로그인</title>
 <style>
@@ -78,6 +81,8 @@
       <strong>개인정보 수집·이용 안내</strong>
       <ul>
         <li>수집 항목: 이름, 이메일, 비밀번호(암호화 저장)</li>
+        <li>공개 범위: 승인된 위원에게는 이름·직책만 보여요. 이메일은 관리자만 볼 수 있어요.</li>
+        <li>보관 장소: 클라우드 서비스(Supabase)의 보안 저장소. 비밀번호는 관리자도 볼 수 없어요.</li>
         <li>이용 목적: 운영위원 본인 확인, 가입 승인, 업무 배정·연락</li>
         <li>보관 기간: 운영위원으로 활동하는 동안. 위원 자격이 끝나거나 삭제를 요청하시면 삭제합니다.</li>
         <li>동의하지 않으셔도 되지만, 이 경우 가입할 수 없어요.</li>
@@ -91,8 +96,8 @@
 </main>
 
 <script src="config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
+<script src="auth.js?v=6"></script>
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };

@@ -37,4 +37,4 @@ create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
 -- ▼ 관리자 지정: 먼저 사이트에서 본인 계정으로 가입 신청한 뒤, 아래 이메일을 본인 것으로 바꿔 실행하세요.
--- update public.profiles set status = 'approved', role = 'admin' where email = 'yeonssam1202@gmail.com';
+-- update public.profiles set status = 'approved', role = 'admin' where email = '여기에_본인_이메일';

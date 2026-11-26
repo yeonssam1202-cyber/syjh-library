@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>작은도서관 운영위원회 · 회원 승인</title>
-<script src="guard.js?v=16"></script>
+<script src="guard.js?v=17"></script>
 <style>
   :root { --bg:#ffffff; --text:#201f1d; --muted:#6c6b69; --accent:#1f4b8f; --accent-700:#14305c; --line:#dde3ec; --err:#a8321f; --ok:#2f6b3a; }
   * { box-sizing:border-box; margin:0; }
@@ -148,10 +148,14 @@
     }
 
     async function load() {
-      var r = await client.from("profiles").select("id,name,email,status,role,position,shift_manager,created_at").order("created_at", { ascending: false });
+      var r = await client.from("profiles").select("id,name,status,role,position,shift_manager,created_at").order("created_at", { ascending: false });
       var hasPos = !r.error;
-      if (r.error) r = await client.from("profiles").select("id,name,email,status,role,created_at").order("created_at", { ascending: false });
+      if (r.error) r = await client.from("profiles").select("id,name,status,role,created_at").order("created_at", { ascending: false });
       if (r.error) { show("목록을 불러오지 못했어요: " + r.error.message); return; }
+      // 이메일은 다른 위원에게 보이지 않게 막아 두었고, 관리자만 전용 함수로 받아와요.
+      var em = await client.rpc("admin_member_emails"), emails = {};
+      if (!em.error && em.data) em.data.forEach(function (x) { emails[x.id] = x.email; });
+      r.data.forEach(function (x) { x.email = emails[x.id] || ""; });
       var pend = r.data.filter(function (x) { return x.status === "pending"; });
       var tp = document.getElementById("rows-pending"), ta = document.getElementById("rows-all");
       tp.textContent = ""; ta.textContent = "";

@@ -30,9 +30,9 @@ window.whenAuthed.then(function (me) {
     if (a.error) throw a.error;
     if (a.data) settings = { slots: a.data.slots, closed_days: a.data.closed_days, required: a.data.required };
     if (!members.length) {
-      var m = await db.from('profiles').select('id,name,email').eq('status', 'approved').order('name');
+      var m = await db.from('profiles').select('id,name').eq('status', 'approved').order('name');
       if (m.error) throw m.error;
-      members = m.data.map(function (x) { return { id: x.id, name: x.name || x.email }; });
+      members = m.data.map(function (x) { return { id: x.id, name: x.name || '이름 없음' }; });
     }
     await loadWeek();
   }
@@ -282,7 +282,7 @@ window.whenAuthed.then(function (me) {
     else U.notice('ok', name + ' 위원을 ' + added + '번 넣었어요.' + (skipped ? ' (이미 있거나 휴관이라 ' + skipped + '번은 건너뛰었어요)' : ''));
     await refresh();
   }
-  $('c-me').onclick = function () { addShifts(me.id, me.name || me.email || '나', ''); };
+  $('c-me').onclick = function () { addShifts(me.id, me.name || '이름 없음' || '나', ''); };
   $('c-add').onclick = function () {
     var id = $('c-who').value, m = members.filter(function (x) { return x.id === id; })[0];
     if (m) addShifts(m.id, m.name, $('c-note').value.trim());

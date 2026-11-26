@@ -113,10 +113,10 @@ window.whenAuthed.then(function (me) {
   // ---------- 데이터 ----------
   async function loadMembers() {
     if (members.length) return;
-    var r = await db.from('profiles').select('id,name,email,position').eq('status', 'approved').order('name');
-    if (r.error) r = await db.from('profiles').select('id,name,email').eq('status', 'approved').order('name');
+    var r = await db.from('profiles').select('id,name,position').eq('status', 'approved').order('name');
+    if (r.error) r = await db.from('profiles').select('id,name').eq('status', 'approved').order('name');
     if (r.error) throw r.error;
-    members = r.data.map(function (x) { return { id: x.id, name: x.name || x.email, position: x.position }; });
+    members = r.data.map(function (x) { return { id: x.id, name: x.name || '이름 없음', position: x.position }; });
   }
   async function loadOne(id) {
     var r = await db.from('meetings').select('*, meeting_attendees(*), meeting_signatures(*), meeting_photos(*), meeting_reviews(*), meeting_suggestions(*), meeting_changes(*)').eq('id', id).maybeSingle();

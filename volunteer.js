@@ -12,9 +12,9 @@ window.whenAuthed.then(function (me) {
   function shiftMonth(m, d) { var y = +m.slice(0, 4), mo = +m.slice(5, 7) - 1 + d; var dt = new Date(y, mo, 1); return dt.getFullYear() + '-' + U.pad(dt.getMonth() + 1); }
 
   async function load() {
-    var p = await db.from('profiles').select('id,name,email,position').eq('status', 'approved').order('name');
+    var p = await db.from('profiles').select('id,name,position').eq('status', 'approved').order('name');
     if (p.error) throw p.error;
-    vols = p.data.filter(function (x) { return x.position === '자원봉사' }).map(function (x) { return { id: x.id, name: x.name || x.email }; });
+    vols = p.data.filter(function (x) { return x.position === '자원봉사' }).map(function (x) { return { id: x.id, name: x.name || '이름 없음' }; });
     var r = monthRange(ym), today = U.today();
     var s = await db.from('shifts').select('user_id,shift_date,slot').gte('shift_date', r[0]).lte('shift_date', r[1]);
     if (s.error) throw s.error;
@@ -68,7 +68,7 @@ window.whenAuthed.then(function (me) {
         h('div', { style: 'margin-top:6px' }, cf ? h('span', { class: 'badge gold', text: '확인됨 ' + hrs(cf.confirmed_minutes) + ' · ' + cf.confirmed_by_name }) : h('span', { class: 'badge', text: '아직 임원이 확인하지 않았어요' }),
           cf && cf.auto_minutes !== c.done ? h('div', { class: 'hint', style: 'color:var(--err)', text: '확인 이후 근무가 바뀌었어요. 임원이 다시 확인하면 확인서에 반영돼요.' }) : null,
           cf && cf.note ? h('div', { class: 'hint', text: '조정 사유: ' + cf.note }) : null),
-        h('div', { class: 'bar' }, h('button', { class: 'primary', type: 'button', text: '봉사 활동 확인서 만들기', onclick: function () { showCert({ id: me.id, name: me.name || me.email }); } }))));
+        h('div', { class: 'bar' }, h('button', { class: 'primary', type: 'button', text: '봉사 활동 확인서 만들기', onclick: function () { showCert({ id: me.id, name: me.name || '이름 없음' }); } }))));
     }
     if (!isApprover && !me.isVolunteer) app.appendChild(h('div', { class: 'empty', text: '이 화면은 자원봉사 위원과 임원이 사용해요.' }));
     app.appendChild(h('div', { id: 'certbox' }));

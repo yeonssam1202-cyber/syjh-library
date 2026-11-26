@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>업무 목록 · 작은도서관 운영위원회</title>
-<script src="guard.js?v=16"></script>
+<script src="guard.js?v=17"></script>
 <style>
   :root { --bg:#ffffff; --text:#201f1d; --muted:#6c6b69; --accent:#1f4b8f; --accent-700:#14305c; --line:#dde3ec; --err:#a8321f; --card:#fff; }
   * { box-sizing:border-box; margin:0; }
@@ -112,7 +112,7 @@ window.whenAuthed.then(function (me) {
   var STATUS = States.labels("task");
   var $ = function (id) { return document.getElementById(id); };
   var members = [], tasks = [], filter = "all", editing = null;
-  var nameOf = function (id) { var m = members.find(function (x) { return x.id === id; }); return m ? (m.name || m.email) : "알 수 없음"; };
+  var nameOf = function (id) { var m = members.find(function (x) { return x.id === id; }); return m ? (m.name || '이름 없음') : "알 수 없음"; };
 
   function notice(text) { var n = $("notice"); n.textContent = text || ""; n.classList.toggle("show", !!text); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -121,7 +121,7 @@ window.whenAuthed.then(function (me) {
   function canDelete(t) { return me.can("tasks_write") && (me.role === "admin" || t.created_by === me.id); }
 
   async function load() {
-    var m = await db.from("profiles").select("id,name,email").eq("status", "approved").order("name");
+    var m = await db.from("profiles").select("id,name").eq("status", "approved").order("name");
     var t = await db.from("tasks").select("*, task_assignees(user_id, role)").order("created_at", { ascending: false });
     if (m.error || t.error) {
       var msg = (m.error || t.error).message;
@@ -208,13 +208,13 @@ window.whenAuthed.then(function (me) {
     var subs = t ? t.task_assignees.filter(function (a) { return a.role !== "main"; }).map(function (a) { return a.user_id; }) : [];
     var sel = $("f-main"); sel.textContent = "";
     var none = document.createElement("option"); none.value = ""; none.textContent = "(정하지 않음)"; sel.appendChild(none);
-    members.forEach(function (m) { var o = document.createElement("option"); o.value = m.id; o.textContent = m.name || m.email; sel.appendChild(o); });
+    members.forEach(function (m) { var o = document.createElement("option"); o.value = m.id; o.textContent = m.name || '이름 없음'; sel.appendChild(o); });
     sel.value = mainId;
     var box = $("people"); box.textContent = "";
     members.forEach(function (m) {
       var lab = document.createElement("label"); lab.dataset.uid = m.id;
       var cb = document.createElement("input"); cb.type = "checkbox"; cb.value = m.id; cb.checked = subs.indexOf(m.id) >= 0;
-      lab.appendChild(cb); lab.appendChild(document.createTextNode(m.name || m.email));
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(m.name || '이름 없음'));
       box.appendChild(lab);
     });
     // 메인으로 고른 사람은 보조 목록에서 빠져요(같은 사람이 둘 다일 수 없어요).

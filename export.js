@@ -10,10 +10,13 @@ window.whenAuthed.then(function (me) {
   app.appendChild(h('div', { class: 'note', text: '내려받은 파일에는 위원 이름과 금액 등이 들어 있어요. 안전한 곳에 보관하고, 메신저나 공개 장소에 올리지 마세요.' }));
 
   // ---------- 도우미 ----------
+  // 위원(profiles) 표는 이메일 칸을 일부러 막아 두어서 칸을 하나씩 적어 불러와요. 이메일은 관리자만 전용 함수로 받아요.
+  var PROFILE_COLS = "id,name,position,role,status,shift_manager,created_at";
+  async function withEmails(rows) { var e = await db.rpc("admin_member_emails"), m = {}; if (!e.error && e.data) e.data.forEach(function (x) { m[x.id] = x.email; }); return rows.map(function (p) { return Object.assign({}, p, { email: m[p.id] || "" }); }); }
   async function all(table, build) {
-    var out = [], from = 0, step = 1000;
+    var out = [], from = 0, step = 1000, cols = table === "profiles" ? PROFILE_COLS : "*";
     for (;;) {
-      var q = build ? build(db.from(table).select('*')) : db.from(table).select('*');
+      var q = build ? build(db.from(table).select(cols)) : db.from(table).select(cols);
       var r = await q.range(from, from + step - 1);
       if (r.error) throw r.error;
       out = out.concat(r.data);
@@ -68,7 +71,7 @@ window.whenAuthed.then(function (me) {
     var sh = await all('shifts', function (q) { return q.gte('shift_date', a).lte('shift_date', b).order('shift_date'); });
     var months = {}; for (var d = new Date(a + 'T00:00:00'); d <= new Date(b + 'T00:00:00'); d.setDate(d.getDate() + 25)) months[U.ymd(d).slice(0, 7)] = 1; months[b.slice(0, 7)] = 1;
     var conf = []; try { conf = await all('volunteer_hour_confirmations'); } catch (e) { conf = []; }
-    var pf = await all('profiles'), nmap = {}; pf.forEach(function (p) { nmap[p.id] = p.name || p.email; });
+    var pf = await all('profiles'), nmap = {}; pf.forEach(function (p) { nmap[p.id] = p.name || '이름 없음'; });
     var per = {}; sh.forEach(function (s) { var k = s.name; per[k] = per[k] || { n: 0, min: 0 }; per[k].n++; per[k].min += slotMin(s.slot); });
     save([
       { name: '근무', cols: ['날짜', '시간대', '이름', '메모'], rows: sh.map(function (s) { return { '날짜': s.shift_date, '시간대': s.slot, '이름': s.name, '메모': s.note }; }) },
@@ -92,7 +95,7 @@ window.whenAuthed.then(function (me) {
   cards.push(card('공지 · 업무 목록', '공지 전체와 업무 목록(상태, 마감일, 메인·보조 담당자)을 엑셀 두 장으로 받아요.', null, '엑셀 받기', async function () {
     var ns = await all('notices', function (q) { return q.order('created_at'); });
     var ts = await all('tasks', function (q) { return q.select('*, task_assignees(user_id,role)').order('created_at'); });
-    var pr = await all('profiles'); var nm = {}; pr.forEach(function (p) { nm[p.id] = p.name || p.email; });
+    var pr = await all('profiles'); var nm = {}; pr.forEach(function (p) { nm[p.id] = p.name || '이름 없음'; });
     var ST = States.labels('task');
     save([
       { name: '공지', cols: ['작성일', '제목', '작성자', '고정', '내용'], rows: ns.map(function (n) { return { '작성일': n.created_at.slice(0, 10), '제목': n.title, '작성자': n.created_by_name, '고정': n.pinned ? '고정' : '', '내용': n.body }; }) },
@@ -103,7 +106,7 @@ window.whenAuthed.then(function (me) {
   // ----- 관리자 전용 -----
   if (isAdmin) {
     cards.push(card('위원 명단 (관리자 전용)', '이름, 이메일, 직책, 권한, 상태, 가입일이 들어 있어요. 개인정보이니 조심해서 다뤄 주세요.', null, '엑셀 받기', async function () {
-      var pr = await all('profiles', function (q) { return q.order('created_at'); });
+      var pr = await withEmails(await all("profiles", function (q) { return q.order("created_at"); }));
       var ST = States.labels('profile');
       save([{ name: '위원 명단', cols: ['이름', '이메일', '직책', '관리자', '근무 담당', '상태', '가입일'], rows: pr.map(function (p) { return { '이름': p.name, '이메일': p.email, '직책': p.position || '', '관리자': p.role === 'admin' ? '관리자' : '', '근무 담당': p.shift_manager ? '담당' : '', '상태': ST[p.status] || p.status, '가입일': (p.created_at || '').slice(0, 10) }; }) }], '위원명단_' + STAMP + '.xlsx');
     }, true));
@@ -111,9 +114,9 @@ window.whenAuthed.then(function (me) {
     cards.push(card('전체 백업 (관리자 전용)', '모든 기록(위원, 회의록과 서명, 예산·지출, 근무, 공지, 감사 보고서 등)을 JSON 파일 하나로 받아요. Supabase 무료 플랜이 멈추거나 문제가 생겼을 때를 대비해 달마다 한 번씩 받아 두세요.', null, '백업 파일 받기', async function () {
       var TABLES = ['profiles', 'role_permissions', 'tasks', 'task_assignees', 'documents', 'meetings', 'meeting_attendees', 'meeting_signatures', 'meeting_photos', 'meeting_reviews', 'meeting_suggestions', 'meeting_changes',
         'meeting_events', 'meeting_rsvps', 'rule_versions', 'budget_items', 'expenses', 'expense_receipts', 'shift_settings', 'shifts', 'shift_change_requests', 'shift_history', 'volunteer_hour_confirmations',
-        'notices', 'notice_reads', 'audit_reports'];
+        'notices', 'notice_reads', 'audit_reports', 'calendar_items', 'meeting_polls', 'meeting_poll_options', 'meeting_poll_votes'];
       var out = { _info: { 만든날: new Date().toISOString(), 설명: '작은도서관 운영위원회 업무공간 전체 백업(표 내용만, 영수증·사진·자료실 파일은 포함되지 않음)' } }, skipped = [];
-      for (var i = 0; i < TABLES.length; i++) { try { out[TABLES[i]] = await all(TABLES[i]); } catch (e) { skipped.push(TABLES[i]); } }
+      for (var i = 0; i < TABLES.length; i++) { try { out[TABLES[i]] = TABLES[i] === "profiles" ? await withEmails(await all("profiles")) : await all(TABLES[i]); } catch (e) { skipped.push(TABLES[i]); } }
       var blob = new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' });
       var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '백업_' + STAMP + '.json'; document.body.appendChild(a); a.click();
       setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);

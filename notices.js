@@ -19,8 +19,8 @@ window.whenAuthed.then(function (me) {
     var rd = await db.from('notice_reads').select('notice_id,user_id,read_at').limit(5000);
     reads = rd.error ? [] : rd.data;
     if (!members.length) {
-      var m = await db.from('profiles').select('id,name,email').eq('status', 'approved');
-      members = m.error ? [] : m.data.map(function (x) { return { id: x.id, name: x.name || x.email }; });
+      var m = await db.from('profiles').select('id,name').eq('status', 'approved');
+      members = m.error ? [] : m.data.map(function (x) { return { id: x.id, name: x.name || '이름 없음' }; });
     }
   }
   function isRead(n) { return n.created_by === me.id || reads.some(function (r) { return r.notice_id === n.id && r.user_id === me.id; }); }

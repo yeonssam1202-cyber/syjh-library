@@ -7,6 +7,19 @@
   hide.textContent = "html{visibility:hidden!important}";
   document.head.appendChild(hide);
 
+  // ---- 보안 설정 ----
+  // 1) 다른 사이트의 틀(iframe) 안에 이 화면을 끼워 넣는 것(클릭 가로채기)을 막아요.
+  if (window.top !== window.self) { document.documentElement.innerHTML = ""; try { window.top.location = window.self.location; } catch (e) {} throw new Error("framed"); }
+  // 2) 허용한 곳(이 사이트, 지정한 라이브러리, Supabase)만 연결하도록 제한하고, 방문 기록(주소)이 다른 사이트에 넘어가지 않게 해요.
+  //    (개관 준비 화면은 외부 디자인 라이브러리를 쓰는 시안이라 제외)
+  (function () {
+    var m = document.createElement("meta"); m.name = "referrer"; m.content = "same-origin"; document.head.appendChild(m);
+    if (/checklist.html$/.test(location.pathname)) return;
+    var c = document.createElement("meta"); c.httpEquiv = "Content-Security-Policy";
+    c.content = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'";
+    document.head.appendChild(c);
+  })();
+
   // 폰 홈 화면에 추가할 때 쓰는 아이콘과 이름
   (function () {
     function tag(name, attrs) { var e = document.createElement(name); Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); }); document.head.appendChild(e); }
@@ -16,9 +29,10 @@
     tag("meta", { name: "apple-mobile-web-app-capable", content: "yes" });
     tag("meta", { name: "apple-mobile-web-app-title", content: "작은도서관" });
   })();
-  function load(src) {
+  function load(src, integrity) {
     return new Promise(function (ok, fail) {
       var s = document.createElement("script");
+      if (integrity) { s.integrity = integrity; s.crossOrigin = "anonymous"; }   // 내용이 바뀐 파일은 실행하지 않아요
       s.src = src; s.onload = ok; s.onerror = fail;
       document.head.appendChild(s);
     });
@@ -175,8 +189,8 @@
   (async function () {
     try {
       await load(base + "config.js");
-      await load("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js");
-      await load(base + "auth.js?v=5");
+      await load("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js", "sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug");
+      await load(base + "auth.js?v=6");
       await load(base + "dialogs.js?v=2");
       await load(base + "states.js?v=1");
       var p = Auth.configured ? await Auth.getProfile() : null;

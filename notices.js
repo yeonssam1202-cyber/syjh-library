@@ -66,7 +66,7 @@ window.whenAuthed.then(function (me) {
   function renderList() {
     var box = $('nl'); box.textContent = '';
     var rows = list.filter(function (n) { return !term || (n.title + '\n' + n.body).toLowerCase().indexOf(term) >= 0; });
-    if (!rows.length) { box.appendChild(h('div', { class: 'empty', text: list.length ? '찾는 공지가 없어요.' : '아직 올라온 공지가 없어요.' })); return; }
+    if (!rows.length) { box.appendChild(h('div', { class: 'empty', text: list.length ? '찾는 공지가 없어요.' : (canWrite ? '아직 올라온 공지가 없어요. 오른쪽 위 [+ 공지 쓰기]로 첫 공지를 올려 보세요.' : '아직 올라온 공지가 없어요. 새 공지가 올라오면 홈에서도 알려 드려요.') })); return; }
     rows.forEach(function (n) {
       var edited = n.updated_at && new Date(n.updated_at) - new Date(n.created_at) > 60000;
       var d = h('details', { class: 'ncard' + (n.pinned ? ' pinned' : ''), open: openId === n.id ? true : null },

@@ -37,6 +37,19 @@
   table.perm th:first-child, table.perm td:first-child { text-align:left; white-space:normal; }
   table.perm input { width:22px; height:22px; accent-color:var(--accent-700); }
   @media (max-width:640px) { th.hide-sm, td.hide-sm { display:none; } }
+  /* 폰에서는 회원 표를 한 사람당 카드처럼 보여 줘요 */
+  @media (max-width:640px) {
+    #box-all thead, #box-pending thead { display:none; }
+    #box-all table, #box-all tbody, #box-pending table, #box-pending tbody { display:block; }
+    #rows-all tr { display:grid; grid-template-columns:1fr auto; gap:6px 8px; padding:12px 0; border-bottom:1px solid var(--line); }
+    #rows-all td, #rows-pending td { display:block; border:0; padding:0; }
+    #rows-all td.hide-sm, #rows-pending td.hide-sm { display:none; }
+    #rows-all td:nth-child(1) { font-weight:700; font-size:16px; }
+    #rows-all td:nth-child(5) { grid-row:1; grid-column:2; justify-self:end; }
+    #rows-all td:nth-child(2), #rows-all td:nth-child(6) { grid-column:1 / -1; }
+    #rows-pending tr { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px 8px; padding:12px 0; border-bottom:1px solid var(--line); }
+    #rows-pending td:nth-child(1) { font-weight:700; font-size:16px; }
+  }
 </style>
 </head>
 <body>

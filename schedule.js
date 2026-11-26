@@ -31,7 +31,7 @@ window.whenAuthed.then(function (me) {
     var upcoming = events.filter(function (e) { return e.event_date >= today; }).sort(function (a, b) { return a.event_date < b.event_date ? -1 : 1; });
     var past = events.filter(function (e) { return e.event_date < today; });
     app.appendChild(h('h2', { style: 'font-size:17px;margin:4px 0 8px;color:var(--navy)', text: '다가오는 회의' }));
-    if (!upcoming.length) app.appendChild(h('div', { class: 'empty', text: '등록된 다가오는 회의가 없어요.' }));
+    if (!upcoming.length) app.appendChild(h('div', { class: 'empty', text: canCreate ? '등록된 다가오는 회의가 없어요. [+ 회의 일정 등록]으로 추가하거나, 날짜가 정해지지 않았다면 "날짜 투표"로 먼저 정해 보세요.' : '등록된 다가오는 회의가 없어요. 일정이 정해지면 여기와 홈에 나타나요.' }));
     upcoming.forEach(function (e) { app.appendChild(card(e, false)); });
     if (past.length) {
       var d = h('details', { style: 'margin-top:14px' }, h('summary', { style: 'cursor:pointer;font-weight:600;color:var(--navy);margin-bottom:8px', text: '지난 회의 ' + past.length + '건' }));

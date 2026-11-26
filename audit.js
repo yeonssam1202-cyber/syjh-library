@@ -47,7 +47,7 @@ window.whenAuthed.then(function (me) {
       canWrite ? h('button', { class: 'primary', text: '+ 감사 보고서 쓰기', onclick: function () { nav('?new'); } }) : null));
     if (!canWrite) app.appendChild(h('div', { class: 'hint noprint', style: 'margin:-8px 0 12px', text: '감사 보고서는 감사가 작성해요. 다른 위원은 읽기만 할 수 있어요.' }));
     var list = h('div', { class: 'list' });
-    if (!r.data.length) list.appendChild(h('div', { class: 'empty', text: '아직 감사 보고서가 없어요.' }));
+    if (!r.data.length) list.appendChild(h('div', { class: 'empty', text: canWrite ? '아직 감사 보고서가 없어요. 오른쪽 위 [+ 감사 보고서 쓰기]로 첫 보고서를 만들어 보세요.' : '아직 올라온 감사 보고서가 없어요. 감사 위원이 올리면 여기에 나타나요.' }));
     r.data.forEach(function (x) {
       var a = h('a', { class: 'rcard', href: 'audit.html?id=' + x.id },
         h('div', { class: 't', text: title(x) }),

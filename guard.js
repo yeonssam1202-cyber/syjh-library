@@ -221,7 +221,7 @@
       if (p && p.status === "error") { connProblem(); return; }          // 연결 문제: 로그인 화면으로 보내지 않고 다시 시도하게 해요
       if (!p || p.status !== "approved") { location.replace(loginUrl); return; }
       // 공통 가독성 스타일(화면별 스타일 위에 덮어씀)을 먼저 붙인 뒤 화면을 보여 줘요
-      await new Promise(function (ok) { var l = document.createElement("link"); l.rel = "stylesheet"; l.href = base + "refine.css?v=2"; l.onload = ok; l.onerror = ok; document.head.appendChild(l); });
+      await new Promise(function (ok) { var l = document.createElement("link"); l.rel = "stylesheet"; l.href = base + "refine.css?v=3"; l.onload = ok; l.onerror = ok; document.head.appendChild(l); });
       hide.remove();
       resolveAuthed(p);
       watchSession(p);

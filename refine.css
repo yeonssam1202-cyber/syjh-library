@@ -9,7 +9,7 @@
   h1 { color:#14305c; font-size:25px; font-weight:800; line-height:1.3; }
 
   /* 카드(덩어리): 흰 바탕 + 옅은 테두리와 그림자 */
-  .panel, .card, .card2, .calmain, .calday, .ev, .ncard, .ex, .sumcard, .rcard, .dcard, .ecard, .stat, .sug, .pl {
+  .panel, .card, .card2, .calmain, .calday, .ev, .ncard, .ex, .sumcard, .rcard, .dcard, .ecard, .stat, .sug, .pl, .task {
     background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:var(--card-shadow);
   }
   .ncard.pinned, .todo a { border-left-width:4px; }
@@ -24,6 +24,16 @@
   input[type=text]:focus, input[type=number]:focus, input[type=date]:focus, input[type=time]:focus, input[type=password]:focus, input[type=search]:focus, input[type=email]:focus, select:focus, textarea:focus {
     outline:3px solid rgba(31,75,143,.25); border-color:#1f4b8f;
   }
+
+  /* 칩(필터 버튼)·팝업 창·기본 버튼 모양을 모든 화면에서 같게 */
+  .chip { border:1px solid #b9c6dc; background:#fff; color:#475467; font-weight:600; }
+  .chip[aria-pressed="true"] { background:#14305c; border-color:#14305c; color:#fff; }
+  dialog { border:0; border-radius:14px; box-shadow:0 16px 48px rgba(20,48,92,.28); }
+  dialog::backdrop { background:rgba(20,48,92,.45); }
+  form.dlg h2, form.dlg h3, .dlg h3 { color:#14305c; font-weight:800; }
+  button { border-radius:8px; }
+  .task, .ev, .ncard { transition:box-shadow .15s; }
+  .task:hover, .ev:hover { box-shadow:0 3px 10px rgba(20,48,92,.14); }
 
   /* 버튼: 주요는 진하게, 보조는 테두리로 */
   .primary { background:#1f4b8f; color:#fff; font-weight:700; border-radius:8px; box-shadow:0 1px 2px rgba(20,48,92,.30); }

@@ -53,6 +53,11 @@ window.whenAuthed.then(function (me) {
   }
   function status(n) { return n < settings.required ? 'short' : 'ok'; }
 
+  // "10:00-13:00" → "10~13시" (폰에서 한 줄에 들어가게 줄여요)
+  function shortSlot(slot) {
+    var m = /^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/.exec(slot || '');
+    return m && m[2] === '00' && m[4] === '00' ? (+m[1]) + '~' + (+m[3]) + '시' : slot;
+  }
   function render() {
     app.textContent = '';
     var dates = weekDates(), todayKey = U.today();
@@ -95,9 +100,11 @@ window.whenAuthed.then(function (me) {
       if (isClosed(d)) card.appendChild(h('div', { class: 'closedrow', text: '휴관' }));
       else settings.slots.forEach(function (slot) {
         var list = at(d, slot);
-        card.appendChild(h('button', { class: 'srow ' + status(list.length), type: 'button', onclick: function () { openCell(d, slot); } },
-          h('span', { class: 'sl', text: slot + ' · ' + list.length + '/' + settings.required + '명' }),
-          list.length ? list.map(function (s) { return h('span', { class: s.user_id === me.id ? 'me' : '', style: 'margin-right:8px;' + (s.user_id === me.id ? 'font-weight:700;color:var(--accent-700)' : ''), text: s.name }); }) : h('span', { style: 'color:var(--muted)', text: '(비어 있어요)' })));
+        // 한 줄에: 시간대 · 인원 표시 · 이름들 (비어 있으면 "신청하기")
+        card.appendChild(h('button', { class: 'srow ' + status(list.length), type: 'button', 'aria-label': md(d) + ' ' + slot + ' 근무자 ' + list.length + '명', onclick: function () { openCell(d, slot); } },
+          h('span', { class: 'sl', text: shortSlot(slot) }),
+          h('span', { class: 'cn ' + status(list.length), text: list.length + '/' + settings.required }),
+          h('span', { class: 'nm' }, list.length ? list.map(function (s) { return h('span', { class: s.user_id === me.id ? 'me' : '', text: s.name }); }) : h('span', { class: 'none', text: '+ 신청하기' }))));
       });
       days.appendChild(card);
     });

@@ -26,10 +26,15 @@
   .dcard { background:#fff; border:1px solid var(--line); border-radius:8px; margin-bottom:10px; overflow:hidden; }
   .dcard.today { border-color:var(--accent); }
   .dcard .dh { padding:8px 14px; background:#f7f9fc; font-weight:600; display:flex; justify-content:space-between; }
-  .dcard .srow { display:block; width:100%; text-align:left; background:#fff; border:0; border-top:1px solid var(--line); border-left:4px solid transparent; padding:10px 14px; font-size:15px; }
+  .dcard .srow { display:grid; grid-template-columns:70px 52px 1fr; gap:8px; align-items:center; width:100%; text-align:left; background:#fff; border:0; border-top:1px solid var(--line); border-left:4px solid transparent; padding:10px 12px; font-size:15px; }
   .dcard .srow.short { border-left-color:var(--err); }
   .dcard .srow.ok { border-left-color:var(--ok); }
-  .dcard .srow .sl { color:var(--muted); font-size:13px; display:block; }
+  .dcard .srow .sl { color:#475467; font-size:14px; font-weight:700; }
+  .dcard .srow .cn { justify-self:start; font-size:12.5px; font-weight:800; padding:2px 9px; border-radius:999px; background:#eef0f4; color:#475467; }
+  .dcard .srow .cn.short { background:#fbeae6; color:var(--err); } .dcard .srow .cn.ok { background:#e8f3ea; color:var(--ok); }
+  .dcard .srow .nm { display:flex; flex-wrap:wrap; gap:4px 10px; }
+  .dcard .srow .nm .me { font-weight:800; color:var(--accent-700); }
+  .dcard .srow .none { color:#98a2b3; font-size:14px; }
   .dcard .closedrow { padding:10px 14px; color:var(--muted); background:repeating-linear-gradient(135deg,#f3f5f8,#f3f5f8 6px,#e6eaf0 6px,#e6eaf0 12px); }
   .counts { display:flex; flex-wrap:wrap; gap:6px; }
   .legend { color:var(--muted); font-size:14px; margin:8px 0 14px; }
@@ -84,6 +89,6 @@
 </dialog>
 
 <script src="ui.js?v=1"></script>
-<script src="shifts.js?v=8"></script>
+<script src="shifts.js?v=9"></script>
 </body>
 </html>

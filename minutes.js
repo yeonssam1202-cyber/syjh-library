@@ -524,10 +524,21 @@ window.whenAuthed.then(function (me) {
     if (me.role === 'admin' || (m.author_id === me.id && m.status === 'draft'))
       acts.appendChild(h('button', { class: 'ghost danger', text: '삭제', onclick: function () { removeMeeting(m.id, m.meeting_photos); } }));
 
+    // 진행 단계 표시: 작성·검토 → 서명 → 마감 (지금 어디인지, 얼마나 진행됐는지)
+    function stepper(mm, cc) {
+      var order = ['draft', 'signing', 'closed'], at = order.indexOf(mm.status);
+      var info = [mm.status === 'draft' ? '검토 ' + mm.meeting_reviews.length + '/' + cc.present + '명' : '완료', mm.status === 'signing' ? '서명 ' + mm.meeting_signatures.length + '/' + cc.present + '명' : (at > 1 ? '완료' : '대기'), at === 2 ? '마감됨' : '대기'];
+      var names = ['작성·검토', '서명', '마감'];
+      return h('ol', { class: 'steps' }, names.map(function (nm, i) {
+        var st = i < at ? 'done' : i === at ? 'cur' : 'todo';
+        var li = h('li', { class: st }, h('span', { class: 'n', text: st === 'done' ? '✓' : String(i + 1) }), h('span', { class: 't' }, h('b', { text: nm }), h('small', { text: info[i] })));
+        if (i === at) { li.setAttribute('data-machine', 'meeting'); li.setAttribute('data-state', mm.status); li.setAttribute('aria-current', 'step'); }
+        return li;
+      }));
+    }
     var head = h('div', { class: 'top noprint' },
       h('div', null, h('div', { class: 'mark', text: '작은도서관 운영위원회' }), h('h1', { text: '제' + m.seq + '차 ' + m.kind + ' 회의록' }),
-        h('div', { class: 'badges' }, h('span', { class: 'badge ' + m.status, 'data-machine': 'meeting', 'data-state': m.status, text: STATUS[m.status] }),
-          m.status !== 'draft' ? h('span', { class: 'badge', text: '서명 ' + m.meeting_signatures.length + '/' + c.present + '명' }) : null)));
+        stepper(m, c)));
 
     // 서명 칸
     function sigCell(a) {

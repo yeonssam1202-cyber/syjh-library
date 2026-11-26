@@ -31,6 +31,14 @@
   .card .t { font-weight:600; font-size:17px; }
   .card .s { color:var(--muted); font-size:14px; margin-top:2px; }
   .badges { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .steps { display:flex; gap:8px; list-style:none; padding:0; margin:10px 0 0; flex-wrap:wrap; }
+  .steps li { display:flex; align-items:center; gap:8px; padding:7px 14px 7px 8px; border-radius:999px; background:#eef0f4; color:#667085; border:1px solid #dde3ec; }
+  .steps li .n { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#c9d2e3; color:#fff; font-weight:800; font-size:14px; flex:none; }
+  .steps li .t { display:flex; flex-direction:column; line-height:1.2; }
+  .steps li .t b { font-size:14.5px; } .steps li .t small { font-size:12.5px; }
+  .steps li.done { background:#e8f3ea; color:#2f6b3a; border-color:#cfe5d3; } .steps li.done .n { background:#2f6b3a; }
+  .steps li.cur { background:#14305c; color:#fff; border-color:#14305c; } .steps li.cur .n { background:#fff; color:#14305c; }
+  .steps li.cur .t small { color:#cfdcf2; }
   .badge { font-size:13px; padding:2px 10px; border-radius:999px; background:#eceff4; color:var(--muted); }
   .badge.draft { background:#eceff4; }
   .badge.signing { background:#e8edf5; color:var(--accent-700); }
@@ -127,6 +135,7 @@
   @page { size:A4; margin:24mm 14mm 18mm;
     @top-right { content:""; width:42mm; height:15mm; background:url("logo.png") no-repeat right center / contain; }
     @bottom-center { content:"- " counter(page) " -"; font-size:10pt; color:#333; } }
+  @media print { .steps { display:none !important; } }
   @media print {
     body { background:#fff; padding:0; font-size:12pt; }
     .noprint, #app-bar { display:none !important; }
@@ -171,6 +180,6 @@
   </div>
 </dialog>
 
-<script src="minutes.js?v=14"></script>
+<script src="minutes.js?v=15"></script>
 </body>
 </html>

@@ -84,6 +84,18 @@ window.whenAuthed.then(async function (me) {
     h('div', null, h('div', { class: 'hi', text: (me.name || '위원') + ' 님, 안녕하세요' }),
       h('div', { class: 'sub', text: '쌍용더플래티넘장항 작은도서관 운영위원회 · ' + (me.role === 'admin' ? '관리자 · ' : '') + (me.position || '') + ' · ' + md(today) }))));
 
+  // 폰에서 처음 쓰는 분께: 홈 화면에 추가하는 방법 안내 (닫으면 다시 안 보여요)
+  (function () {
+    var phone = window.matchMedia('(max-width:820px)').matches, standalone = (window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true, gone = false;
+    try { gone = localStorage.getItem('installTipOff') === '1'; } catch (e) {}
+    if (!phone || standalone || gone) return;
+    var card = h('div', { class: 'installtip' },
+      h('div', { class: 'tx' }, h('b', { text: '홈 화면에 추가하면 앱처럼 한 번에 열려요' }), h('span', { text: '카카오톡처럼 아이콘을 눌러 바로 들어올 수 있어요. 1분이면 돼요.' })),
+      h('div', { class: 'bt' }, h('a', { class: 'go', href: 'install.html', text: '방법 보기' }),
+        h('button', { type: 'button', 'aria-label': '안내 닫기', text: '닫기', onclick: function () { try { localStorage.setItem('installTipOff', '1'); } catch (e) {} card.remove(); } })));
+    app.appendChild(card);
+  })();
+
   // 한눈에 보는 숫자 (누르면 해당 화면으로)
   var minutesN = todo.filter(function (t) { return t.href.indexOf('minutes.html') === 0; }).length;
   function kpi(n, label, href, tone) { return h('a', { class: 'kpi-c ' + tone + (n > 0 ? ' on' : ''), href: href }, h('b', { text: String(n) }), h('span', { text: label })); }

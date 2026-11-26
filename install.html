@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>홈 화면에 추가 · 작은도서관 운영위원회</title>
+<script src="guard.js?v=20"></script>
+<link rel="stylesheet" href="common.css?v=5">
+<style>
+  .lead { color:var(--muted); margin:-6px 0 14px; }
+  .warn { background:#fff4e0; border:1px solid #f0d9a8; color:#8a5a00; border-radius:10px; padding:12px 14px; margin-bottom:14px; display:none; }
+  .warn.show { display:block; }
+  .seg { display:flex; gap:8px; margin-bottom:14px; }
+  .seg button { flex:1; padding:12px 8px; border:1px solid #9fb0cc; background:#fff; color:#14305c; font-weight:700; border-radius:10px; font-size:16px; }
+  .seg button[aria-pressed="true"] { background:#14305c; border-color:#14305c; color:#fff; }
+  .steps { list-style:none; padding:0; display:flex; flex-direction:column; gap:12px; margin-bottom:16px; }
+  .steps li { display:flex; gap:14px; align-items:flex-start; background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; box-shadow:0 1px 3px rgba(20,48,92,.10); }
+  .steps .n { flex:none; width:34px; height:34px; border-radius:50%; background:#1f4b8f; color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center; font-size:17px; }
+  .steps b { display:block; font-size:17px; margin-bottom:2px; }
+  .steps p { color:#475467; font-size:15px; }
+  .steps .ic { display:inline-flex; vertical-align:middle; width:30px; height:30px; border:1px solid #9fb0cc; border-radius:8px; align-items:center; justify-content:center; background:#f3f6fb; color:#14305c; margin:0 2px; }
+  .steps .ic svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .tip { background:#e8f3ea; border-radius:10px; padding:12px 14px; color:#2f6b3a; margin-bottom:14px; }
+  .btnrow { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .done { text-align:center; padding:18px; background:#e8f3ea; color:#2f6b3a; border-radius:12px; font-weight:700; display:none; }
+  .done.show { display:block; }
+  .panel-i { display:none; } .panel-i.on { display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="notice" class="notice noprint" role="alert"></div>
+  <div class="top"><div><div class="mark">작은도서관 운영위원회</div><h1>휴대폰 홈 화면에 추가</h1></div></div>
+  <p class="lead">한 번만 해 두면 카카오톡 아이콘처럼 <b>한 번 눌러서</b> 바로 열려요. 주소를 외울 필요가 없어요.</p>
+
+  <div id="in-app" class="warn"><b>지금은 카카오톡·네이버 같은 앱 안에서 열려 있는 것 같아요.</b><br>이 상태에서는 추가가 안 돼요. 오른쪽 위(또는 아래)의 <b>⋮ / 공유</b> 메뉴에서 <b>"다른 브라우저로 열기"</b>를 눌러 아이폰은 <b>Safari</b>, 안드로이드는 <b>Chrome</b>으로 열어 주세요.</div>
+  <div id="installed" class="done">✓ 이미 홈 화면에서 열고 계세요. 따로 할 일이 없어요!</div>
+
+  <div id="main-guide">
+    <div class="seg" role="group" aria-label="휴대폰 종류">
+      <button type="button" id="b-ios" aria-pressed="false">아이폰</button>
+      <button type="button" id="b-and" aria-pressed="false">안드로이드</button>
+    </div>
+
+    <div id="p-ios" class="panel-i">
+      <div class="tip">아이폰은 꼭 <b>Safari(사파리)</b>로 열어야 해요. 파란 나침반 모양 앱이에요.</div>
+      <ol class="steps">
+        <li><span class="n">1</span><div><b>Safari로 이 사이트를 열어요</b><p>주소창에 <b>yeonssam1202-cyber.github.io/syjh-library</b>를 입력하고 로그인해요.</p></div></li>
+        <li><span class="n">2</span><div><b>아래 가운데 공유 버튼을 눌러요</b><p>네모에서 화살표가 위로 나온 모양이에요. <span class="ic"><svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4M5 12v8h14v-8"/></svg></span></p></div></li>
+        <li><span class="n">3</span><div><b>메뉴를 올려서 "홈 화면에 추가"를 눌러요</b><p>목록이 길어서 위로 쓸어 올려야 보일 수 있어요. <span class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg></span></p></div></li>
+        <li><span class="n">4</span><div><b>오른쪽 위 "추가"를 눌러요</b><p>이름은 그대로 두셔도 돼요. 홈 화면에 <b>작은도서관</b> 아이콘이 생겨요.</p></div></li>
+      </ol>
+    </div>
+
+    <div id="p-and" class="panel-i">
+      <div class="tip">안드로이드는 <b>Chrome(크롬)</b>을 권해요. 삼성 인터넷은 아래에 따로 적어 뒀어요.</div>
+      <div id="android-install" class="btnrow" style="display:none"><button class="primary" type="button" id="btn-install">지금 바로 설치하기</button></div>
+      <ol class="steps">
+        <li><span class="n">1</span><div><b>Chrome으로 이 사이트를 열어요</b><p>주소창에 <b>yeonssam1202-cyber.github.io/syjh-library</b>를 입력하고 로그인해요.</p></div></li>
+        <li><span class="n">2</span><div><b>오른쪽 위 점 세 개를 눌러요</b><p>점이 세로로 세 개 있는 모양이에요. <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg></span></p></div></li>
+        <li><span class="n">3</span><div><b>"홈 화면에 추가" 또는 "앱 설치"를 눌러요</b><p>휴대폰마다 이름이 조금 달라요. 둘 중 보이는 걸 누르면 돼요.</p></div></li>
+        <li><span class="n">4</span><div><b>"추가" 또는 "설치"를 눌러요</b><p>한 번 더 물어보면 눌러 주세요. 홈 화면에 <b>작은도서관</b> 아이콘이 생겨요.</p></div></li>
+      </ol>
+      <div class="panel" style="margin-top:6px"><h2>삼성 인터넷을 쓰는 경우</h2><p>아래쪽 <b>메뉴(줄 세 개)</b> → <b>"현재 페이지 추가"</b> → <b>"홈 화면"</b> 을 차례로 눌러요.</p></div>
+    </div>
+
+    <div class="panel"><h2>안 될 때는</h2>
+      <ul style="margin:0 0 0 20px;color:#475467">
+        <li>"홈 화면에 추가"가 안 보이면: 카카오톡·네이버 앱 안이 아닌지 확인해 주세요. 위 빨간 안내가 나오면 그 방법으로 브라우저를 바꿔요.</li>
+        <li>아이콘을 눌렀는데 로그인 화면이 나오면: 한 번 로그인해 두면 계속 유지돼요.</li>
+        <li>그래도 안 되면 총무나 관리자에게 알려 주세요.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<script src="ui.js?v=1"></script>
+<script>
+// 안드로이드 크롬: 브라우저가 "설치" 버튼을 허락하면 한 번에 설치할 수 있게 보여 줘요 (먼저 받아 둬야 놓치지 않아요)
+var deferred = null;
+window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; var b = document.getElementById('android-install'); if (b) b.style.display = ''; });
+window.whenAuthed.then(function () {
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  var inApp = /KAKAOTALK|NAVER\(inapp|NAVER|Instagram|FBAN|FBAV|Line\//i.test(ua);
+  function pick(which) {
+    document.getElementById('b-ios').setAttribute('aria-pressed', which === 'ios');
+    document.getElementById('b-and').setAttribute('aria-pressed', which === 'and');
+    document.getElementById('p-ios').classList.toggle('on', which === 'ios');
+    document.getElementById('p-and').classList.toggle('on', which === 'and');
+  }
+  document.getElementById('b-ios').onclick = function () { pick('ios'); };
+  document.getElementById('b-and').onclick = function () { pick('and'); };
+  pick(isIOS ? 'ios' : 'and');
+  if (standalone) { document.getElementById('installed').classList.add('show'); document.getElementById('main-guide').style.display = 'none'; }
+  if (inApp && !standalone) document.getElementById('in-app').classList.add('show');
+  document.getElementById('btn-install').onclick = async function () { if (!deferred) return; deferred.prompt(); try { await deferred.userChoice; } catch (e) {} deferred = null; document.getElementById('android-install').style.display = 'none'; };
+});
+</script>
+</body>
+</html>

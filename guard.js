@@ -81,6 +81,7 @@
     work.push(["개관 준비", "checklist.html"]);
     var mine = [["내 정보", "myinfo.html"]];
     if (p.can("export_basic")) mine.push(["내보내기", "export.html"]);
+    mine.push(["홈 화면에 추가", "install.html"]);
     if (p.role === "admin") mine.push(["회원 승인", "members.html"]);
     return [
       { name: "홈", short: "홈", items: [["홈", "home.html"]] },

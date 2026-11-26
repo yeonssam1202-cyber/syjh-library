@@ -91,17 +91,56 @@
       { name: "내 정보·관리", short: "내 정보", items: mine }
     ];
   }
+  // 메뉴 아이콘 (선 그림). 이름 → 그릴 선(path) 목록
+  var ICONS = {
+    home: ["M3 11l9-8 9 8", "M5 10v10h14V10"],
+    chat: ["M21 12a8 8 0 0 1-11.5 7.2L3 21l1.8-5.5A8 8 0 1 1 21 12z"],
+    task: ["M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M8 9l2 2 4-4", "M8 16h8"],
+    won: ["M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z", "M8 9l1.5 6L12 10l2.5 5L16 9"],
+    book: ["M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z", "M4 19V5"],
+    user: ["M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z", "M4 21c0-4 4-6 8-6s8 2 8 6"]
+  };
+  var GROUP_ICON = { "홈": "home", "회의·공지": "chat", "업무·근무": "task", "회계": "won", "자료": "book", "내 정보·관리": "user" };
+  function icon(name) {
+    var NS = "http://www.w3.org/2000/svg", s = document.createElementNS(NS, "svg");
+    s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "ab-i"); s.setAttribute("aria-hidden", "true");
+    (ICONS[name] || []).forEach(function (d) { var p = document.createElementNS(NS, "path"); p.setAttribute("d", d); s.appendChild(p); });
+    return s;
+  }
+  // 컴퓨터: 왼쪽 메뉴(현재 대분류가 펼쳐져요) / 폰: 아래 탭 메뉴(누르면 세부 메뉴가 위로 펼쳐져요)
   function addLogoutBar(p) {
     var page = location.pathname.split("/").pop() || "home.html";
     var groups = menuGroups(p), cur = null;
     groups.forEach(function (g) { if (g.items.some(function (i) { return i[1] === page; })) cur = g; });
     var isPhone = function () { return window.matchMedia("(max-width:820px)").matches; };
     function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+    var who = (p.name || p.email || "") + (p.role === "admin" ? " (관리자)" : "");
 
     var bar = el("div"); bar.id = "app-bar";
-    var top = el("div", "ab-top"), logo = el("a", "ab-logo"); logo.href = base + "home.html"; logo.setAttribute("aria-label", "홈");
-    var img = el("img"); img.src = base + "logo.png"; img.alt = "The Platinum"; logo.appendChild(img); top.appendChild(logo);
-    var nav = el("nav", "ab-groups"); nav.setAttribute("aria-label", "대분류 메뉴");
+
+    // ---- 컴퓨터: 왼쪽 메뉴 ----
+    var side = el("aside", "ab-side"); side.setAttribute("aria-label", "메뉴");
+    var logo = el("a", "ab-logo"); logo.href = base + "home.html"; logo.setAttribute("aria-label", "홈");
+    var img = el("img"); img.src = base + "logo.png"; img.alt = "The Platinum"; logo.appendChild(img); side.appendChild(logo);
+    var list = el("nav", "ab-list"); list.setAttribute("aria-label", "대분류 메뉴");
+    groups.forEach(function (g) {
+      var a = el("a", "ab-g" + (g === cur ? " cur" : "")); a.href = base + g.items[0][1];
+      a.appendChild(icon(GROUP_ICON[g.name])); a.appendChild(el("span", "", g.name));
+      if (g === cur) a.setAttribute("aria-current", "true");
+      list.appendChild(a);
+      if (g === cur && g.items.length > 1) {
+        var sub = el("div", "ab-subs");
+        g.items.forEach(function (i) { var s = el("a", "ab-s" + (i[1] === page ? " cur" : ""), i[0]); s.href = base + i[1]; if (i[1] === page) s.setAttribute("aria-current", "page"); sub.appendChild(s); });
+        list.appendChild(sub);
+      }
+    });
+    side.appendChild(list);
+    var user = el("div", "ab-user"); user.appendChild(el("div", "ab-who", who));
+    var lo = el("button", "ab-lo", "로그아웃"); lo.onclick = doLogout; user.appendChild(lo); side.appendChild(user);
+    bar.appendChild(side);
+
+    // ---- 폰: 아래 탭 + 위로 펼쳐지는 세부 메뉴 ----
+    var tabs = el("nav", "ab-tabs"); tabs.setAttribute("aria-label", "대분류 메뉴");
     var sheet = el("div", "ab-sheet");
     function closeSheet() { sheet.classList.remove("open"); sheet.removeAttribute("data-for"); }
     function openSheet(g) {
@@ -111,78 +150,63 @@
         if (i[1] === page) a.setAttribute("aria-current", "page");
         sheet.appendChild(a);
       });
-      if (g.short === "내 정보") {                       // 폰에서는 이름·로그아웃도 여기에
-        var u = el("div", "ab-su", (p.name || p.email || "") + (p.role === "admin" ? " (관리자)" : ""));
-        var lo = el("button", "ab-lo", "로그아웃"); lo.onclick = doLogout; u.appendChild(lo); sheet.appendChild(u);
+      if (g.short === "내 정보") {
+        var u = el("div", "ab-su", who); var b2 = el("button", "ab-lo2", "로그아웃"); b2.onclick = doLogout; u.appendChild(b2); sheet.appendChild(u);
       }
       sheet.classList.add("open"); sheet.setAttribute("data-for", g.name);
     }
     groups.forEach(function (g) {
-      var a = el("a", "ab-g" + (g === cur ? " cur" : ""));
-      a.href = base + g.items[0][1];
-      a.appendChild(el("span", "l-long", g.name)); a.appendChild(el("span", "l-short", g.short));
+      var a = el("a", "ab-t" + (g === cur ? " cur" : "")); a.href = base + g.items[0][1];
+      a.appendChild(icon(GROUP_ICON[g.name])); a.appendChild(el("span", "", g.short));
       if (g === cur) a.setAttribute("aria-current", "true");
       a.onclick = function (ev) {
-        if (!isPhone()) return;                          // PC: 그냥 이동(첫 메뉴로)
-        if (g.items.length === 1 && g.items[0][1] !== "") return;   // 홈처럼 하나뿐이면 바로 이동
+        if (!isPhone()) return;
+        if (g.items.length === 1) return;
         ev.preventDefault();
         if (sheet.getAttribute("data-for") === g.name) closeSheet(); else openSheet(g);
       };
-      nav.appendChild(a);
+      tabs.appendChild(a);
     });
-    top.appendChild(nav);
-    var user = el("div", "ab-user"), who = el("span", "", (p.name || p.email || "") + (p.role === "admin" ? " (관리자)" : ""));
-    var btn = el("button", "ab-lo", "로그아웃"); btn.onclick = doLogout;
-    user.appendChild(who); user.appendChild(btn); top.appendChild(user);
-    bar.appendChild(top);
-
-    // PC: 현재 대분류 안의 메뉴를 한 줄로
-    var sub = null;
-    if (cur && cur.items.length > 1) {
-      sub = el("nav", "ab-sub"); sub.setAttribute("aria-label", cur.name + " 메뉴");
-      var inn = el("div", "in");
-      cur.items.forEach(function (i) { var a = el("a", i[1] === page ? "cur" : "", i[0]); a.href = base + i[1]; if (i[1] === page) a.setAttribute("aria-current", "page"); inn.appendChild(a); });
-      sub.appendChild(inn); bar.appendChild(sub);
-    }
-    bar.appendChild(sheet);
+    bar.appendChild(sheet); bar.appendChild(tabs);
     document.addEventListener("click", function (ev) { if (!bar.contains(ev.target)) closeSheet(); });
 
     var st = el("style");
     st.textContent =
-      "#app-bar{position:fixed;top:0;left:0;right:0;z-index:100000;background:#fff;border-bottom:1px solid #c5d0e2;box-shadow:0 1px 6px rgba(20,48,92,.10);font:15px/1.3 -apple-system,'Malgun Gothic',sans-serif;color:#201f1d}" +
-      "#app-bar .ab-top{display:flex;align-items:center;gap:8px;max-width:1120px;margin:0 auto;padding:8px 16px}" +
-      "#app-bar .ab-logo img{height:30px;width:auto;display:block}" +
-      "#app-bar .ab-groups{display:flex;gap:4px;flex:1;margin-left:16px}" +
-      "#app-bar .ab-g{padding:9px 16px;border-radius:8px;color:#14305c;text-decoration:none;font-weight:700;font-size:16px;white-space:nowrap}" +
-      "#app-bar .ab-g:hover{background:#eef2f9}#app-bar .ab-g.cur{background:#14305c;color:#fff}" +
-      "#app-bar .l-short{display:none}" +
-      "#app-bar .ab-user{display:flex;align-items:center;gap:10px;font-size:14px;color:#555;white-space:nowrap}" +
-      "#app-bar .ab-lo{border:1px solid #9fb0cc;background:#fff;color:#14305c;font:inherit;font-weight:700;border-radius:8px;padding:7px 12px;cursor:pointer}" +
-      "#app-bar .ab-sub{background:#f3f6fb;border-top:1px solid #dde3ec}" +
-      "#app-bar .ab-sub .in{max-width:1120px;margin:0 auto;padding:0 16px 0 140px;display:flex;gap:6px}" +
-      "#app-bar .ab-sub a{padding:10px 16px;color:#14305c;text-decoration:none;font-weight:600;border-bottom:3px solid transparent;font-size:15px}" +
-      "#app-bar .ab-sub a:hover{background:#e6ecf6}#app-bar .ab-sub a.cur{border-bottom-color:#1f4b8f;color:#1f4b8f;font-weight:800}" +
-      "#app-bar .ab-sheet{display:none}" +
+      "#app-bar .ab-i{width:1.35em;height:1.35em;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}" +
+      "#app-bar{font:15px/1.3 -apple-system,'Malgun Gothic',sans-serif}" +
+      /* 컴퓨터: 왼쪽 메뉴 */
+      "#app-bar .ab-side{position:fixed;top:0;left:0;bottom:0;width:220px;z-index:100000;background:#14305c;color:#cfdcf2;display:flex;flex-direction:column;padding:16px 12px;overflow-y:auto}" +
+      "#app-bar .ab-logo{display:block;background:#fff;border-radius:10px;padding:8px 10px;margin:0 2px 18px;text-align:center}" +
+      "#app-bar .ab-logo img{height:34px;width:auto;display:inline-block;vertical-align:middle}" +
+      "#app-bar .ab-list{display:flex;flex-direction:column;gap:2px}" +
+      "#app-bar .ab-g{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:9px;color:#cfdcf2;text-decoration:none;font-weight:700;font-size:15.5px}" +
+      "#app-bar .ab-g:hover{background:rgba(255,255,255,.10)}#app-bar .ab-g.cur{background:#fff;color:#14305c}" +
+      "#app-bar .ab-subs{display:flex;flex-direction:column;margin:2px 0 6px 22px;padding-left:12px;border-left:2px solid rgba(255,255,255,.22)}" +
+      "#app-bar .ab-s{padding:8px 10px;border-radius:7px;color:#b9c9e6;text-decoration:none;font-size:14.5px;font-weight:600}" +
+      "#app-bar .ab-s:hover{background:rgba(255,255,255,.10);color:#fff}#app-bar .ab-s.cur{color:#fff;font-weight:800;background:rgba(255,255,255,.16)}" +
+      "#app-bar .ab-user{margin-top:auto;padding:14px 6px 2px;border-top:1px solid rgba(255,255,255,.18)}" +
+      "#app-bar .ab-who{font-size:13.5px;color:#cfdcf2;margin-bottom:8px;word-break:keep-all}" +
+      "#app-bar .ab-lo{width:100%;border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;font:inherit;font-weight:700;border-radius:8px;padding:8px 10px;cursor:pointer}" +
+      "#app-bar .ab-lo:hover{background:rgba(255,255,255,.12)}" +
+      "#app-bar .ab-tabs,#app-bar .ab-sheet{display:none}" +
+      "@media screen and (min-width:821px){body{padding:28px 30px 60px 250px!important}}" +
+      /* 폰: 아래 탭 */
       "@media (max-width:820px){" +
-        "#app-bar{top:auto;bottom:0;border-bottom:0;border-top:1px solid #c5d0e2;box-shadow:0 -2px 10px rgba(20,48,92,.12)}" +
-        "#app-bar .ab-top{padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}" +
-        "#app-bar .ab-logo,#app-bar .ab-user,#app-bar .ab-sub{display:none}" +
-        "#app-bar .ab-groups{margin:0;width:100%;gap:2px}" +
-        "#app-bar .ab-g{flex:1;text-align:center;padding:9px 2px;font-size:13px;line-height:1.25;white-space:normal;word-break:keep-all}" +
-        "#app-bar .l-long{display:none}#app-bar .l-short{display:inline}" +
-        "#app-bar .ab-sheet.open{display:flex;flex-direction:column;gap:6px;position:absolute;left:0;right:0;bottom:100%;background:#fff;border-top:1px solid #c5d0e2;box-shadow:0 -4px 12px rgba(20,48,92,.12);padding:10px 12px}" +
+        "body{padding-top:18px!important;padding-bottom:92px!important}" +
+        "#app-bar .ab-side{display:none}" +
+        "#app-bar .ab-tabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:100000;background:#fff;border-top:1px solid #c5d0e2;box-shadow:0 -2px 10px rgba(20,48,92,.12);padding:5px 4px calc(5px + env(safe-area-inset-bottom,0px))}" +
+        "#app-bar .ab-t{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border-radius:12px;color:#667085;text-decoration:none;font-size:12.5px;font-weight:700;line-height:1.2;word-break:keep-all;text-align:center}" +
+        "#app-bar .ab-t .ab-i{width:24px;height:24px}" +
+        "#app-bar .ab-t.cur{color:#14305c;background:#e8edf5}" +
+        "#app-bar .ab-sheet.open{display:flex;flex-direction:column;gap:6px;position:fixed;left:0;right:0;bottom:66px;z-index:100001;background:#fff;border-top:1px solid #c5d0e2;box-shadow:0 -4px 12px rgba(20,48,92,.14);padding:10px 12px}" +
         "#app-bar .ab-si{display:block;padding:14px 16px;border-radius:10px;background:#f3f6fb;color:#14305c;text-decoration:none;font-weight:700;font-size:17px}" +
         "#app-bar .ab-si.cur{background:#14305c;color:#fff}" +
         "#app-bar .ab-su{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 4px 0;color:#555;font-size:15px}" +
+        "#app-bar .ab-lo2{border:1px solid #9fb0cc;background:#fff;color:#14305c;font:inherit;font-weight:700;border-radius:8px;padding:7px 12px;cursor:pointer}" +
       "}" +
       "@media print{#app-bar{display:none!important}}";
     bar.appendChild(st);
     document.body.appendChild(bar);
-    // 메뉴가 화면 내용을 가리지 않게 여백을 줘요(PC: 위, 폰: 아래)
-    var space = isPhone() ? "padding-bottom" : "padding-top";
-    var px = isPhone() ? 84 : (sub ? 112 : 66);
-    document.body.style.setProperty(isPhone() ? "padding-top" : "padding-bottom", "", "");
-    document.body.style.setProperty(space, px + "px", "important");
   }
   async function doLogout() { await Auth.client.auth.signOut(); location.replace(loginUrl); }
 
@@ -197,7 +221,7 @@
       if (p && p.status === "error") { connProblem(); return; }          // 연결 문제: 로그인 화면으로 보내지 않고 다시 시도하게 해요
       if (!p || p.status !== "approved") { location.replace(loginUrl); return; }
       // 공통 가독성 스타일(화면별 스타일 위에 덮어씀)을 먼저 붙인 뒤 화면을 보여 줘요
-      await new Promise(function (ok) { var l = document.createElement("link"); l.rel = "stylesheet"; l.href = base + "refine.css?v=1"; l.onload = ok; l.onerror = ok; document.head.appendChild(l); });
+      await new Promise(function (ok) { var l = document.createElement("link"); l.rel = "stylesheet"; l.href = base + "refine.css?v=2"; l.onload = ok; l.onerror = ok; document.head.appendChild(l); });
       hide.remove();
       resolveAuthed(p);
       watchSession(p);

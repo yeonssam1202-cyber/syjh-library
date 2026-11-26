@@ -81,19 +81,38 @@ window.whenAuthed.then(async function (me) {
   // ----- 화면 -----
   app.textContent = '';
   app.appendChild(h('div', { class: 'hero' },
-    h('img', { src: 'logo.png', alt: 'The Platinum' }),
     h('div', null, h('div', { class: 'hi', text: (me.name || '위원') + ' 님, 안녕하세요' }),
       h('div', { class: 'sub', text: '쌍용더플래티넘장항 작은도서관 운영위원회 · ' + (me.role === 'admin' ? '관리자 · ' : '') + (me.position || '') + ' · ' + md(today) }))));
 
-  app.appendChild(h('h2', { style: 'font-size:18px;margin:0 0 8px;color:var(--navy)', text: '지금 확인할 일' }));
+  // 한눈에 보는 숫자 (누르면 해당 화면으로)
+  var minutesN = todo.filter(function (t) { return t.href.indexOf('minutes.html') === 0; }).length;
+  function kpi(n, label, href, tone) { return h('a', { class: 'kpi-c ' + tone + (n > 0 ? ' on' : ''), href: href }, h('b', { text: String(n) }), h('span', { text: label })); }
+  app.appendChild(h('div', { class: 'kpi' },
+    kpi(minutesN, '확인할 회의록', 'minutes.html', 'red'), kpi(unreadN.length, '안 읽은 공지', 'notices.html', 'blue'),
+    kpi(myTasks.length, '내 업무(진행 중)', 'tasks.html', 'purple'), kpi(myShifts.length, '내 근무(2주)', 'shifts.html', 'green')));
+
+  app.appendChild(h('h2', { class: 'sec', text: '지금 확인할 일' }));
   if (todo.length) app.appendChild(h('div', { class: 'todo' }, todo.map(function (t) {
     return h('a', { href: t.href, class: t.warn ? 'warn' : '' }, h('span', { text: t.text }), h('span', { class: 'go', text: '보기 ›' }));
   })));
   else app.appendChild(h('div', { class: 'allclear', text: '✓ 지금 확인할 일이 없어요.' }));
 
+  // 자주 하는 일
+  var openCalHook = null;
+  var ICO = { bell: ["M6 17V11a6 6 0 0 1 12 0v6l2 2H4z", "M10 21h4"], cal: ["M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z", "M3 10h18M8 3v4M16 3v4"], vote: ["M4 13l8 7 8-7", "M12 3v12M8 8l4-4 4 4"], clock: ["M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z", "M12 7v5l3 2"] };
+  function ico(n) { var NS = "http://www.w3.org/2000/svg", s = document.createElementNS(NS, "svg"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("class", "qi"); ICO[n].forEach(function (d) { var p = document.createElementNS(NS, "path"); p.setAttribute("d", d); s.appendChild(p); }); return s; }
+  app.appendChild(h('h2', { class: 'sec', text: '자주 하는 일' }));
+  var qa = h('div', { class: 'quick' }, h('a', { href: 'notices.html' }, ico("bell"), '공지 보기'));
+  if (!me.isVolunteer) {
+    qa.appendChild(h('button', { type: 'button', onclick: function () { if (openCalHook) openCalHook(); } }, ico("cal"), '일정 추가'));
+    qa.appendChild(h('a', { href: 'poll.html' }, ico("vote"), '날짜 투표'));
+  }
+  qa.appendChild(h('a', { href: 'shifts.html' }, ico("clock"), '근무표'));
+  app.appendChild(qa);
+
   // ----- 달력: 회의 일정 · 업무 마감 · 근무 (실제 데이터) -----
   var calBox = h('div', { class: 'calwrap' });
-  app.appendChild(h('h2', { style: 'font-size:18px;margin:18px 0 8px;color:var(--navy)', text: '일정 달력' }));
+  app.appendChild(h('h2', { class: 'sec', text: '일정 달력' }));
   app.appendChild(calBox);
   buildCalendar(calBox);
 
@@ -192,6 +211,7 @@ window.whenAuthed.then(async function (me) {
 
     // ----- 공유 일정 추가 · 고치기 -----
     var cdlg = document.getElementById('c-dlg'), editingCal = null;
+    openCalHook = function () { openCal(null, sel); };
     function openCal(c, day) {
       editingCal = c;
       document.getElementById('c-head').textContent = c ? '공유 일정 고치기' : '공유 일정 추가';
